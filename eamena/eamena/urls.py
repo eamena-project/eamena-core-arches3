@@ -31,6 +31,8 @@ urlpatterns = patterns('',
     url(r'^admin/auth/group/(?P<groupid>[0-9]*)/group_activity/$' , 'eamena.views.group_activity.group_activity', name='group_activity'),
     url(r'^admin/auth/user/(?P<userid>[0-9]*)/user_activity_data/$' , 'eamena.views.user_activity.user_activity_data', name='user_activity_data'),
     url(r'^admin/auth/group/(?P<groupid>[0-9]*)/group_activity_data/$' , 'eamena.views.group_activity.group_activity_data', name='group_activity_data'),
+    url(r'^api/herbridge/get$' , 'eamena.views.api.return_resources', name='herbridge_get'),   
+    url(r'^api/herbridge/put$' , 'eamena.views.api.create_resources', name='herbridge_put'),     
     url(r'', include(arches_urls)),
 )
 
