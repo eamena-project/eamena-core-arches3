@@ -88,14 +88,12 @@ def generate_centroids(geometries):
 			for geometry in geometries:
 				geom = GEOSGeometry(JSONSerializer().serialize(geometry['value']),srid =4326)
 				centroid = JSONDeserializer().deserialize(geom.centroid.json)
-				print centroid['coordinates']
 				geom_list.append(centroid['coordinates'])
 			arr = np.asarray(geom_list)
 			length = arr.shape[0]
 			sum_x = np.sum(arr[:, 0])
 			sum_y = np.sum(arr[:, 1])
 			wkt = 'POINT(%s, %s)' % (sum_x/length, sum_y/length)
-			print wkt
 			return GEOSGeometry(wkt, srid = 4326).json
 			
 	else:
