@@ -36,7 +36,6 @@ def create_resources(request):
 		info_res_list = []
 		info_res = {
 			'image_url': '',
-			'thumbnail_url': '',
 			'geometry': '',
 			'capture_date': '',
 			'caption': '',
