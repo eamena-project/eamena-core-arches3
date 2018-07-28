@@ -25,26 +25,49 @@ from arches.app.search.search_engine_factory import SearchEngineFactory
 from django.contrib.gis.geos import GEOSGeometry
 from arches.app.models.resource import Resource
 from arches.app.models.entity import Entity
+from django.forms.models import model_to_dict
 
 import numpy as np
 
+def create_info_resource(json):
+	info_res = {
+		'id': json['id'],
+		'child_entities': {
+			'URL.E51': json['url'],
+			'SPATIAL_COORDINATES_GEOMETRY.E47': '',
+			'DATE_OF_ACQUISITION.E50': '',
+			'DESCRIPTION.E62': '',
+			'IMAGERY_CREATOR_APPELLATION.E82': '',
+		},
+		'related_to': json['related_to']
+	}
+	resource = Resource({
+		'entitytypeid': 'INFORMATION_RESOURCE.E73',
+		'entityid': info_res['id']
+	})
+	schema = Entity.get_mapping_schema(resource.entitytypeid)
+	for key, value in info_res['child_entities'].iteritems():
+		entity = Entity()
+		if key in schema:
+			entity.create_from_mapping(resource.entitytypeid, schema[newsubentity['entitytypeid']]['steps'], newsubentity['entitytypeid'], newsubentity['value'], '')
+	resource.save()
+	
+	
+	#Insert relations
+	se = SearchEngineFactory().create()
+	relationship_type = '4f495e34-987a-44bb-ad24-183310f38d82' #this is the uuid of the concept value for the only type of relationship allowed between a HR and an Information resource
+	for related_res in info_res['related_to']:
+		relationship = resource.create_resource_relationship(related_res, relationship_type_id=relationship_type)
+		se.index_data(index='resource_relations', doc_type='all', body=model_to_dict(relationship), idfield='resourcexid')
 
 @csrf_exempt
 def create_resources(request):
 	if request.method == 'POST':
 		json_resources = JSONDeserializer().deserialize(request.body)
-		info_res_list = []
-		info_res = {
-			'image_url': '',
-			'geometry': '',
-			'capture_date': '',
-			'caption': '',
-			'assessor_name': '',
-			'related_to': []
-			
-		}
-# 			resource = Resource({'entitytypeid': 'INFORMATION_RESOURCE.E73'})
-# 			schema = Entity.get_mapping_schema('INFORMATION_RESOURCE.E73')
+		for json_resource in json_resources:
+			create_info_resource(json_resource)
+				
+
 # 	return JSONResponse({'success': True})
 
 @csrf_exempt
