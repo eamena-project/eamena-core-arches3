@@ -3,7 +3,7 @@ import inspect
 from arches.settings import *
 from django.utils.translation import ugettext as _
 
-
+GDAL_LIBRARY_PATH = r"C:\Program Files\GDAL\gdal202.dll"
 PACKAGE_ROOT = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 PACKAGE_NAME = PACKAGE_ROOT.split(os.sep)[-1]
 
@@ -36,7 +36,8 @@ EAMENA_RESOURCES = {
 
 'HERITAGE_RESOURCE_GROUP.E27' : 'IDIHA',
 'HERITAGE_FEATURE.E24': 'IDIHA-F',
-'HERITAGE_COMPONENT.B2': 'IDIHA-C'
+'HERITAGE_COMPONENT.B2': 'IDIHA-C',
+'ARCHAEOLOGICAL_FIND.E19': 'FIND',
 
 }
 
@@ -104,6 +105,25 @@ def RESOURCE_TYPE_CONFIGS():
             },
             'sort_order': 3
         },
+        'ARCHAEOLOGICAL_FIND.E19': {
+            'resourcetypeid': 'ARCHAEOLOGICAL_FIND.E19',
+            'name': _('Archaeological Find'),
+            'icon_class': 'fa fa-delicious',
+            'default_page': 'related-files',
+            'default_description': _('No name available'),
+            'description_node': _('FIND_NOTES.E62'),
+            'categories': [_('Resource')],
+            'has_layer': True,
+            'on_map': True,
+            'marker_color': '#000000',
+            'stroke_color': '#000000',
+            'fill_color': '#eedbad',
+            'primary_name_lookup': {
+                'entity_type': 'FIND_ID.E42',
+                'lookup_value': 'Primary'
+            },
+            'sort_order': 4
+        },
         'ACTOR.E39': {
             'resourcetypeid': 'ACTOR.E39',
             'name': _('Person/Organization'),
@@ -121,7 +141,7 @@ def RESOURCE_TYPE_CONFIGS():
                 'entity_type': 'EAMENA_ID.E42',
                 'lookup_value': 'Primary'
             },
-            'sort_order': 4
+            'sort_order': 5
         },
         'INFORMATION_RESOURCE.E73': {
             'resourcetypeid': 'INFORMATION_RESOURCE.E73',
@@ -140,7 +160,7 @@ def RESOURCE_TYPE_CONFIGS():
                 'entity_type': 'EAMENA_ID.E42',
                 'lookup_value': 'Primary'
             },
-            'sort_order': 5
+            'sort_order': 6
         }
     }
 

@@ -275,7 +275,6 @@ class ComponentAssessmentForm(ResourceForm):
                 }
             }
 
-
 # --- Measurements -> MeasurementvaluesForm ------------------------------------------
 class MeasurementvaluesForm(ResourceForm):
     @staticmethod
@@ -1348,6 +1347,32 @@ class ComponentLocationForm(ResourceForm):
                 'GEOMETRY_TYPE.E55': Concept().get_e55_domain('GEOMETRY_TYPE.E55'),
             },
             'BingDates': getdates(geom.value) if geom else ''
+        }
+
+class FindLocationForm(ResourceForm):
+    @staticmethod
+    def get_info():
+        return {
+            'id': 'location-find',
+            'icon': 'fa-map-marker',
+            'name': _('Location'),
+            'class': FindLocationForm
+        }
+
+    def update(self, data, files):
+
+        self.update_nodes('PLACE.E53', data)
+        
+        return
+
+    def load(self, lang):
+    
+        self.data['PLACE.E53'] = {
+            'branch_lists': self.get_nodes('PLACE.E53'),
+            'domains': {
+                'ADDRESS_TYPE.E55': Concept().get_e55_domain('ADDRESS_TYPE.E55'),
+                'LOCATION_TYPE.E55': Concept().get_e55_domain('LOCATION_TYPE.E55'),
+            },
         }
 
 class CoverageForm(ResourceForm):
