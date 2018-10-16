@@ -73,8 +73,8 @@ def create_resources(request):
 @csrf_exempt
 def return_resources(request):
 	'''Endpoint to return nearest 1000 EAMENA resources given a GeoJSON bounding box'''
+	json_collection = []
 	if request.method == 'POST':
-		json_collection = []
 		json_res = {
 			'resource_type': '',
 			'resource_id': '',
@@ -96,7 +96,7 @@ def return_resources(request):
 			json_res['resource_name'] = hit['_source']['primaryname']
 			json_res['centroid'] = generate_centroids(hit['_source']['geometries'])
 			json_collection.append(json_res)
-		return JSONResponse(json_collection)
+	return JSONResponse(json_collection)
 		
 def generate_centroids(geometries):
 	'''In some cases, resources will have multiple geometries. If that is the case, generating one centroid from the first available geometry won't be an accurate representation of the location of the overall resource. In that case, centre points are first generated for each geometry, then the centroid of the centre points is outputted. '''
