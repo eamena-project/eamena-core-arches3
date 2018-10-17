@@ -23,7 +23,10 @@ define(['jquery',
                     dataKey: 'FORM_ASSIGNMENT.E13',
                     rules: true,
                     validateBranch: function (nodes) {
-                        var ck0 = this.validateHasValues(nodes);
+                        var canBeEmpty = [
+                            'FORM_ASSIGNMENT_INVESTIGATOR_NAME.E41',
+                        ];
+                        var ck0 = this.validateHasValues(nodes,canBeEmpty);
                         return ck0;
                     }
                 }));

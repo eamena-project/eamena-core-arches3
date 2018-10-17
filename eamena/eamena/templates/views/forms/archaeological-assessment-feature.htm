@@ -53,8 +53,13 @@
             </div>
         </div>
         <div class="row">
+            <div class="col-xs-12 col-sm-9">
+                <div class="alert alert-danger branch-invalid-alert" role="alert" style="display:none;">{% trans "All values must be populated, and dates must be properly formatted (YYYY-MM-DD)." %}</div>
+            </div>
+        </div>
+        <div class="row">
             <div class="col-xs-12">
-                <div class="arches-crud-child-section">
+                <div class="arches-crud-child-section" style="margin-top: 0px">
                     <dl>
                         <dd class="arches-CRUD-child-title">
                             {% trans "This resource has these morphologies:" %}
