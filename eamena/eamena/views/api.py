@@ -75,12 +75,6 @@ def return_resources(request):
 	'''Endpoint to return nearest 1000 EAMENA resources given a GeoJSON bounding box'''
 	json_collection = []
 	if request.method == 'POST':
-		json_res = {
-			'resource_type': '',
-			'resource_id': '',
-			'resource_name' : '',
-			'centroid': ''
-		}
 		geojson = JSONDeserializer().deserialize(request.body)
 		se = SearchEngineFactory().create()
 		query= Query(se)
@@ -91,6 +85,12 @@ def return_resources(request):
 		query.add_query(boolfilter)
 		results = query.search(index='entity', doc_type='',start=0, limit = 1000)
 		for hit in results['hits']['hits']:
+			json_res = {
+				'resource_type': '',
+				'resource_id': '',
+				'resource_name' : '',
+				'centroid': ''
+                	}
 			json_res['resource_type'] = hit['_type']
 			json_res['resource_id'] = hit['_id']
 			json_res['resource_name'] = hit['_source']['primaryname']
