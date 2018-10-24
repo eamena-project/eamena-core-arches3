@@ -277,7 +277,7 @@ except ImportError:
     pass
     
 #Radius in metres to be used to calculate the existence of pre-existing resources in the database. If, upon resource creation, other pre-existing resources fall within this radius, an alert is returned before save.
-METER_RADIUS = 1000 
+METER_RADIUS = 50 
 
 
 LOGGING = {
