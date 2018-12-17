@@ -29,7 +29,6 @@ USE_L10N = True
 
 RESOURCE_MODEL = {'default': 'eamena.models.resource.Resource'}
 
-
 #Specify which ridentifiers should be taken on by which resource types. All other resource types will take on an identifier beginning with their truncated EntityType, e.g. ACTOR for ACTOR.E39, INFORMATION for INFORMATION_RESOURCE.E73
 EAMENA_RESOURCES = {
 
@@ -40,6 +39,8 @@ EAMENA_RESOURCES = {
 
 }
 
+MAP_MAX_UNLOGGED_ZOOM = 10 # This is the max level of zoom for anonymous users
+REPORT_MIN_UNLOGGED_ZOOM = 16
 
 ID_LENGTH = 7 #Indicates the length of the Unique Resource IDs after the set tag, e.g. 7 -> EAMENA-0000001. MUST BE GIVEN, AND BE 2 OR OVER.
 
