@@ -18,6 +18,11 @@ LOCALE_PATHS = (os.path.join(PACKAGE_ROOT, '../locale'),)
 # Absolute filesystem path to the directory holds bulk upload data
 BULK_UPLOAD_DIR =  os.path.join(PACKAGE_ROOT, 'bulk_upload')
 
+try:
+    from settings_local import GDAL_LIBRARY_PATH
+except ImportError:
+    pass
+
 ugettext = lambda s: s
 LANGUAGES = (
     ('en-US', ugettext('English')),
