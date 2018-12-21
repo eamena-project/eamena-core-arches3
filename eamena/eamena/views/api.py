@@ -16,59 +16,96 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 '''
 
-
+import os
+import urllib
+from datetime import datetime
+from tempfile import NamedTemporaryFile
+from django.conf import settings
+from django.core.files import File
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.gis.geos import GEOSGeometry
+from django.forms.models import model_to_dict
 from arches.app.utils.betterJSONSerializer import JSONSerializer, JSONDeserializer
 from arches.app.utils.JSONResponse import JSONResponse
 from arches.app.search.elasticsearch_dsl_builder import Bool, Query, Nested, Terms, GeoShape
 from arches.app.search.search_engine_factory import SearchEngineFactory
-from django.contrib.gis.geos import GEOSGeometry
+from arches.app.utils.imageutils import generate_thumbnail
 from arches.app.models.resource import Resource
 from arches.app.models.entity import Entity
-from django.forms.models import model_to_dict
+
 
 import numpy as np
 
-def create_info_resource(json):
-    info_res = {
-        'id': json['id'],
-        'child_entities': {
-            'URL.E51': json['url'],
-            'SPATIAL_COORDINATES_GEOMETRY.E47': '',
-            'DATE_OF_ACQUISITION.E50': '',
-            'DESCRIPTION.E62': '',
-            'IMAGERY_CREATOR_APPELLATION.E82': '',
-        },
-        'related_to': json['related_to']
-    }
-    resource = Resource({
-        'entitytypeid': 'INFORMATION_RESOURCE.E73',
-        'entityid': info_res['id']
-    })
-    schema = Entity.get_mapping_schema(resource.entitytypeid)
-    for key, value in info_res['child_entities'].iteritems():
-        entity = Entity()
-        if key in schema:
-            entity.create_from_mapping(resource.entitytypeid, schema[newsubentity['entitytypeid']]['steps'], newsubentity['entitytypeid'], newsubentity['value'], '')
-    resource.save()
-    
-    
+def create_information_resource(data):
+
+    resid = data['id']
+    url = data['url']
+    lat = data['latitude']
+    lng = data['longitude']
+    caption = data['caption']
+    epoch_time = data['captureDate']
+
+    ## transform some of the data
+    wkt = "POINT ( {} {} )".format(lng, lat)
+    yyyymmdd = datetime.fromtimestamp(float(epoch_time)).strftime('%Y-%m-%d')
+
+    ## create resource instance, and set the easy entity values
+    res = Resource()
+    res.entitytypeid = 'INFORMATION_RESOURCE.E73'
+    res.set_entity_value('DESCRIPTION.E62', caption)
+    res.set_entity_value('DATE_OF_ACQUISITION.E50', yyyymmdd)
+    res.set_entity_value('SPATIAL_COORDINATES_GEOMETRY.E47', wkt)
+    res.set_entity_value('URL.E51', url)
+    res.save()
+
+    ## retrieve file from url and save it to the resource
+    filename = os.path.basename(url)
+    temp_file = os.path.join(settings.MEDIA_ROOT,"temp",filename)
+    urllib.urlretrieve(url,temp_file)
+
+    with open(temp_file,"rb") as f:
+        django_file = File(f)
+        django_file.content_type = "image"
+        res.set_entity_value('FILE_PATH.E62', django_file)
+        thumb = generate_thumbnail(django_file)
+        if thumb != None:
+            res.set_entity_value('THUMBNAIL.E62', thumb)
+        res.save()
+
+    os.remove(temp_file)
+
+    ## index resource
+    res.index()
+
     #Insert relations
     se = SearchEngineFactory().create()
-    relationship_type = '4f495e34-987a-44bb-ad24-183310f38d82' #this is the uuid of the concept value for the only type of relationship allowed between a HR and an Information resource
-    for related_res in info_res['related_to']:
-        relationship = resource.create_resource_relationship(related_res, relationship_type_id=relationship_type)
+
+    ## this is the uuid of the concept value for the only type of relationship
+    ## allowed between a HR and an Information resource
+    relationship_type = '4f495e34-987a-44bb-ad24-183310f38d82'
+    for related_res in data['related_to']:
+        relationship = res.create_resource_relationship(related_res, relationship_type_id=relationship_type)
         se.index_data(index='resource_relations', doc_type='all', body=model_to_dict(relationship), idfield='resourcexid')
+
+    response = {
+        "created": True,
+        "resourceid": res.entityid
+    }
+
+    return (response, 201)
 
 @csrf_exempt
 def create_resources(request):
-    if request.method == 'POST':
-        json_resources = JSONDeserializer().deserialize(request.body)
-        for json_resource in json_resources:
-            create_info_resource(json_resource)
-                
 
-#     return JSONResponse({'success': True})
+    if request.method == 'POST':
+
+        received_json = JSONDeserializer().deserialize(request.body)
+        if "" in received_json.values() or None in received_json.values():
+            return JSONResponse({'error':'incomplete json'}, status=500)
+        
+        response,status = create_information_resource(received_json)
+
+    return JSONResponse(response, status=status)
 
 @csrf_exempt
 def return_resources(request):
