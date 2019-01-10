@@ -104,9 +104,28 @@ def create_resources(request):
     if request.method == 'POST':
 
         received_json = JSONDeserializer().deserialize(request.body)
-        if "" in received_json.values() or None in received_json.values():
-            return JSONResponse({'error':'incomplete json'}, status=500)
-        
+
+        ## check that the received JSON has all of the expected keys
+        all_keys = ['url', 'related_to', 'longitude',
+            'caption', 'latitude', 'captureDate', 'id']
+        missing_keys = [i for i in all_keys if not i in received_json.keys()]
+        if len(missing_keys) > 0:
+            jmsg = {
+                'error': 'incomplete json',
+                'missing keys': missing_keys
+            }
+            return JSONResponse(jmsg, status=400)
+
+        ## check that the required keys all have real values
+        required = ['url', 'related_to', 'captureDate', 'id']
+        empty_vals = [k for k, v in received_json.iteritems() if v == "" and k in required]
+        if len(empty_vals):
+            jmsg = {
+                'error': 'incomplete json',
+                'empty': empty_vals
+            }
+            return JSONResponse(jmsg, status=400)
+    
         response,status = create_information_resource(received_json)
 
     return JSONResponse(response, status=status)
