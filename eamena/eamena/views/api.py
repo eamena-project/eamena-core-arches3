@@ -45,17 +45,21 @@ def create_information_resource(data):
     caption = data['caption']
     epoch_time = data['captureDate']
 
-    ## transform some of the data
-    wkt = "POINT ( {} {} )".format(lng, lat)
     yyyymmdd = datetime.fromtimestamp(float(epoch_time)).strftime('%Y-%m-%d')
 
-    ## create resource instance, and set the easy entity values
+    ## create resource instance, and set the basic entity values
     res = Resource()
     res.entitytypeid = 'INFORMATION_RESOURCE.E73'
-    res.set_entity_value('DESCRIPTION.E62', caption)
     res.set_entity_value('DATE_OF_ACQUISITION.E50', yyyymmdd)
-    res.set_entity_value('SPATIAL_COORDINATES_GEOMETRY.E47', wkt)
     res.set_entity_value('URL.E51', url)
+    if caption != "":
+        res.set_entity_value('DESCRIPTION.E62', caption)
+
+    ## set geometry, but not if 0, 0  is passed in
+    if (lat != "" and lng != "") and (lat, lng) != (0,0):
+        wkt = "POINT ( {} {} )".format(lng, lat)
+        res.set_entity_value('SPATIAL_COORDINATES_GEOMETRY.E47', wkt)
+
     res.save()
 
     ## retrieve file from url and save it to the resource
