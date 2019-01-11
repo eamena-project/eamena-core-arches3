@@ -1,0 +1,91 @@
+{% load i18n %}
+<div class="row">
+     <div class="col-xs-12">
+        <dl>
+            <div class = "content"> 
+            {% if 'PRODUCTION_E12'  in report_info.source.graph %}
+                {% for PRODUCTION_E12 in report_info.source.graph.PRODUCTION_E12 %}
+                    <hr>
+                    {% if 'TYPE_AND_DATE_ASSIGNMENT_E13' in PRODUCTION_E12 %}
+                        {% for TYPE_AND_DATE_ASSIGNMENT_E13 in PRODUCTION_E12.TYPE_AND_DATE_ASSIGNMENT_E13 %}
+                            <dt>
+                                <h5 id="" class="arches-report-subsection-title">{% trans "Find General Category" %}</h5>
+                            </dt>
+                            <dd class="arches-report-subsection-item">
+                                {{ TYPE_AND_DATE_ASSIGNMENT_E13.FIND_CATEGORY_TYPE_E55.0.FIND_CATEGORY_TYPE_E55__label }} 
+                            </dd>
+                            {% if 'FIND_SUB_CATEGORY_TYPE_E55' in TYPE_AND_DATE_ASSIGNMENT_E13 %}
+                            <dt>
+                                <h5 id="" class="arches-report-subsection-title">{% trans "Find Sub-Category" %}</h5>
+                            </dt>
+                            <dd class="arches-report-subsection-item">
+                                {{ TYPE_AND_DATE_ASSIGNMENT_E13.FIND_SUB_CATEGORY_TYPE_E55.0.FIND_SUB_CATEGORY_TYPE_E55__label }} 
+                            </dd>
+                            <dt>
+                                <h5 id="" class="arches-report-subsection-title">{% trans "Find Detailed Sub-Category" %}</h5>
+                            </dt>
+                            <dd class="arches-report-subsection-item">
+                                {{ TYPE_AND_DATE_ASSIGNMENT_E13.FIND_SUB_CATEGORY_TYPE_E55.0.FIND_DETAILED_CATEGORY_TYPE_E55__label }} 
+                            </dd>
+                            {% endif %}
+                            {% if 'PERIOD_BELIEF_I2' in TYPE_AND_DATE_ASSIGNMENT_E13 %}
+                                {% for PERIOD_BELIEF_I2 in TYPE_AND_DATE_ASSIGNMENT_E13.PERIOD_BELIEF_I2 %}
+                                <dt>
+                                    <h5 id="" class="arches-report-subsection-title">{% trans "Period" %}</h5>
+                                </dt>
+                                <dd class="arches-report-subsection-item">
+                                    {{ PERIOD_BELIEF_I2.PERIOD_TYPE_I4.0.PERIOD_TYPE_I4__label }} 
+                                    ({{ PERIOD_BELIEF_I2.PERIOD_CERTAINTY_BELIEF_VALUE_I6.0.PERIOD_CERTAINTY_BELIEF_VALUE_I6__label }})
+                                </dd>
+                                {% endfor %}
+                            {% endif %}
+                            {% if 'FIND_QUANTITY_E62' in TYPE_AND_DATE_ASSIGNMENT_E13 %}
+                                {% for FIND_QUANTITY_E62 in TYPE_AND_DATE_ASSIGNMENT_E13.FIND_QUANTITY_E62 %}
+                                <dt>
+                                    <h5 id="" class="arches-report-subsection-title">{% trans "Quantity/Sample Size" %}</h5>
+                                </dt>
+                                <dd class="arches-report-subsection-item">
+                                    {{ FIND_QUANTITY_E62.FIND_QUANTITY_E62__label }} 
+                                </dd>
+                                {% endfor %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    {% if 'MATERIAL_E57' in PRODUCTION_E12 %}
+                        {% for MATERIAL_E57 in PRODUCTION_E12.MATERIAL_E57 %}
+                        <dt>
+                            <h5 id="" class="arches-report-subsection-title">{% trans "Material/Fabric" %}</h5>
+                        </dt>
+                        <dd class="arches-report-subsection-item">
+                            {{ MATERIAL_E57.MATERIAL_E57__label }} 
+                        </dd>
+                        {% endfor %}
+                    {% endif %}
+                    {% if 'TECHNIQUE_TYPE_E55' in PRODUCTION_E12 %}
+                        {% for TECHNIQUE_TYPE_E55 in PRODUCTION_E12.TECHNIQUE_TYPE_E55 %}
+                        <dt>
+                            <h5 id="" class="arches-report-subsection-title">{% trans "Technique" %}</h5>
+                        </dt>
+                        <dd class="arches-report-subsection-item">
+                            {{ TECHNIQUE_TYPE_E55.TECHNIQUE_TYPE_E55__label }} 
+                        </dd>
+                        {% endfor %}
+                    {% endif %}
+                    {% if 'FIND_NOTES_E62' in PRODUCTION_E12 %}
+                        <dt>
+                            <h5 id="" class="arches-report-subsection-title">{% trans "Notes" %}</h5>
+                        </dt>
+                        {% for FIND_NOTES_E62 in PRODUCTION_E12.FIND_NOTES_E62 %}
+                        <dd class="arches-report-subsection-item">
+                            {{ FIND_NOTES_E62.FIND_NOTES_E62__label|safe }} 
+                        </dd>
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+            <dd class="arches-report-subsection-item dataalert">{% trans "No assessments recorded" %}</dd>
+            {% endif %}
+            </div>
+        </dl>
+    </div>
+</div>
