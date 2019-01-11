@@ -114,7 +114,7 @@ def RESOURCE_TYPE_CONFIGS():
             'resourcetypeid': 'ARCHAEOLOGICAL_FIND.E19',
             'name': _('Archaeological Find'),
             'icon_class': 'fa fa-delicious',
-            'default_page': 'related-files',
+            'default_page': 'assessment-summary',
             'default_description': _('No name available'),
             'description_node': _('FIND_NOTES.E62'),
             'categories': [_('Resource')],
