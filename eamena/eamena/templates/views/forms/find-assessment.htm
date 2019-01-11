@@ -1,0 +1,171 @@
+{% extends "views/forms/base.htm" %}
+{% load i18n %}
+
+{% block form_content %}
+<div class="form-full-content">
+
+    <div id="id-section">
+        <div class="row">
+            <div class="col-xs-12 col-sm-9 margin-bottom-10">
+                <div class="form-section-header"><span>{% trans "Find ID" %}</span></div>
+            </div>
+            <div class="col-xs-12 col-sm-9">
+                <div class="col-xs-12 margin-top-5 form-section-input add-padding-right">
+                    <input class="form-control arches-form-input-100" placeholder='{% trans "Find ID" %}' data-bind='value: getEditedNode("FIND_ID.E42", "value")'>
+                </div>
+                
+            </div>
+            <div class="col-xs-12 col-sm-3 add-button-column add-margin-top">
+                {% include 'views/components/add-item-button.htm' %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-sm-9">
+                <div class="alert alert-danger branch-invalid-alert" role="alert" style="display:none;">{% trans "You must add a Find ID." %}</div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="arches-crud-child-section-new">
+                    <dl>
+                        <dd class="margin-left-5" style="display: none;" data-bind="visible: true">
+                            <div data-bind="visible: getBranchLists().length == 0" class="txt-color-blue filler-text-block nr">{% trans "No Find ID recorded" %}</div>
+                            <div data-bind='foreach: getBranchLists()'>
+                                <div class="arches-crud-record" style="display:block;">
+                                    <a href="javascript:void(0)" title="remove"><i data-bind="click: $parent.deleteItem.bind($parent)" class="arches-CRUD-delete fa fa-times-circle"></i></a>
+                                    <a href="javascript:void(0)" class="arches-CRUD-child arches-CRUD-edit" title="{% trans 'edit' %}" data-bind='click: $parent.editItem.bind($parent)'>
+                                        <span data-bind="html: nodes.get('FIND_ID.E42', 'value')"></span>
+                                        <span class="text-muted">&nbsp;({% trans "Find ID" %})</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="material-section">
+        <div class="row">
+            <div class="col-xs-12 col-sm-9 margin-bottom-10">
+                <div class="form-section-header"><span>{% trans "Find Assessment" %}</span></div>
+            </div>
+            <div class="col-xs-12 col-sm-9">
+                <div class="col-xs-12 col-sm-4 margin-top-5 form-section-input add-padding-right required-input">
+                    <input class="select2 arches-select2-crud-form" data-bind="select2: {value: getEditedNode('FIND_CATEGORY_TYPE.E55', 'value'), placeholder: '{% trans 'Find General Category/Type' %}', dataKey: 'FIND_CATEGORY_TYPE.E55'}"></input>
+                </div>
+                <div class="col-xs-12 col-sm-4 margin-top-5 form-section-input add-padding-right">
+                    <input class="select2 arches-select2-crud-form" data-bind="select2: {value: getEditedNode('FIND_SUB_CATEGORY_TYPE.E55', 'value'), placeholder: '{% trans 'Find Sub Category/Type  (optional)' %}', dataKey: 'FIND_SUB_CATEGORY_TYPE.E55'}"></input>
+                </div>
+                <div class="col-xs-12 col-sm-4 margin-top-5 form-section-input">
+                    <input class="select2 arches-select2-crud-form" data-bind="select2: {value: getEditedNode('FIND_DETAILED_CATEGORY_TYPE.E55', 'value'), placeholder: '{% trans 'Find Detailed Category/Type  (optional)' %}', dataKey: 'FIND_DETAILED_CATEGORY_TYPE.E55'}"></input>
+                </div>
+                
+                <div class="col-xs-12 col-sm-6 margin-top-5 form-section-input add-padding-right required-input">
+                    <input class="select2 arches-select2-crud-form" data-bind="select2: {value: getEditedNode('PERIOD_TYPE.I4', 'value'), placeholder: '{% trans 'Period' %}', dataKey: 'PERIOD_TYPE.I4'}"></input>
+                </div>
+                <div class="col-xs-12 col-sm-6 margin-top-5 form-section-input required-input">
+                    <input class="select2 arches-select2-crud-form" data-bind="select2: {value: getEditedNode('PERIOD_CERTAINTY_BELIEF_VALUE.I6', 'value'), placeholder: '{% trans 'Period Certainty' %}', dataKey: 'PERIOD_CERTAINTY_BELIEF_VALUE.I6'}"></input>
+                </div>
+                
+                <div class="col-xs-12 col-sm-4 margin-top-5 form-section-input add-padding-right required-input">
+                    <input class="form-control arches-form-input-100" placeholder='{% trans "Quantity/Sample Size" %}' data-bind='value: getEditedNode("FIND_QUANTITY.E62", "value")'>
+                </div>
+                <div class="col-xs-12 col-sm-4 margin-top-5 form-section-input add-padding-right required-input">
+                    <input class="select2 arches-select2-crud-form" data-bind="select2: {value: getEditedNode('MATERIAL.E57', 'value'), placeholder: '{% trans 'Material/Fabric' %}', dataKey: 'MATERIAL.E57'}"></input>
+                </div>
+                <div class="col-xs-12 col-sm-4 margin-top-5 form-section-input">
+                    <input class="select2 arches-select2-crud-form" data-bind="select2: {value: getEditedNode('TECHNIQUE_TYPE.E55', 'value'), placeholder: '{% trans 'Technique (optional)' %}', dataKey: 'TECHNIQUE_TYPE.E55'}"></input>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3 add-button-column add-margin-top">
+                {% include 'views/components/add-item-button.htm' %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-sm-9">
+                <div class="alert alert-danger branch-invalid-alert" role="alert" style="display:none;">{% trans "Required fields are marked in green." %}</div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="arches-crud-child-section-new">
+                    <dl>
+                        <dd class="margin-left-5" style="display: none;" data-bind="visible: true">
+                            <div data-bind="visible: getBranchLists().length == 0" class="txt-color-blue filler-text-block nr">{% trans "No material/technique recorded" %}</div>
+                            <div data-bind='foreach: getBranchLists()'>
+                                <div class="arches-crud-record" style="display:block;">
+                                    <a href="javascript:void(0)" title="remove"><i data-bind="click: $parent.deleteItem.bind($parent)" class="arches-CRUD-delete fa fa-times-circle"></i></a>
+                                    <a href="javascript:void(0)" class="arches-CRUD-child arches-CRUD-edit" title="{% trans 'edit' %}" data-bind='click: $parent.editItem.bind($parent)'>
+                                        <span data-bind="html: nodes.get('FIND_CATEGORY_TYPE.E55', 'label')"></span>
+                                        <span class="text-muted">&nbsp;({% trans "Category" %})</span>
+                                        <span data-bind="html: nodes.get('FIND_SUB_CATEGORY_TYPE.E55', 'label')"></span>
+                                        <span class="text-muted">&nbsp;({% trans "Sub Category" %})</span>
+                                        <span data-bind="html: nodes.get('FIND_DETAILED_CATEGORY_TYPE.E55', 'label')"></span>
+                                        <span class="text-muted">&nbsp;({% trans "Detailed Category" %})</span><br>
+                                        
+                                        <span data-bind="html: nodes.get('PERIOD_BELIEF.I2', 'label')"></span>
+                                        <span class="text-muted">&nbsp;({% trans "Period" %})</span>
+                                        <span data-bind="html: nodes.get('PERIOD_CERTAINTY_BELIEF_VALUE.I6', 'label')"></span>
+                                        <span class="text-muted">&nbsp;({% trans "Period Certainty" %})</span><br>
+
+                                        <span data-bind="html: nodes.get('FIND_QUANTITY.E62', 'label')"></span>
+                                        <span class="text-muted">&nbsp;({% trans "Quantity/Sample Size" %})</span>
+                                        <span data-bind="html: nodes.get('MATERIAL.E57', 'label')"></span>
+                                        <span class="text-muted">&nbsp;({% trans "Material/Fabric" %})</span>
+                                        <span data-bind="html: nodes.get('TECHNIQUE_TYPE.E55', 'label')"></span>
+                                        <span class="text-muted">&nbsp;({% trans "Technique" %})</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notes-section">
+        <div class="row">
+            <div class="col-xs-12 col-sm-9 margin-bottom-10">
+                <div class="form-section-header"><span>{% trans "Find Description" %}</span></div>
+                <div class="form-section-subheader"><span>{% trans "Summary of any notes and description" %}</span></div>
+            </div>
+            <div class="col-xs-12 col-sm-9">
+                <div class="arches-html-editor margin-top-5">
+                    <div class="summernote" data-bind="summernote: {value: getEditedNode('FIND_NOTES.E62', 'value'), options:{}}"></div>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-3 add-button-column add-margin-top">
+                {% include 'views/components/add-item-button.htm' %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-sm-9">
+                <div class="alert alert-danger branch-invalid-alert" role="alert" style="display:none;">{% trans "You must add a note." %}</div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="arches-crud-child-section-new">
+                    <dl>
+                        <dd class="margin-left-5" style="display: none;" data-bind="visible: true">
+                            <div data-bind="visible: getBranchLists().length == 0" class="txt-color-blue filler-text-block nr">{% trans "No notes recorded" %}</div>
+                            <div data-bind='foreach: getBranchLists()'>
+                                <div class="arches-crud-record" style="display:block;">
+                                    <a href="javascript:void(0)" title="remove"><i data-bind="click: $parent.deleteItem.bind($parent)" class="arches-CRUD-delete fa fa-times-circle"></i></a>
+                                    <a href="javascript:void(0)" class="arches-CRUD-child arches-CRUD-edit" title="{% trans 'edit' %}" data-bind='click: $parent.editItem.bind($parent)'>
+                                        <span data-bind="html: nodes.get('FIND_NOTES.E62', 'value')"></span>
+                                    </a>
+                                </div>
+                            </div>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% include 'views/forms/sections/SaveEditsFooter.htm' %}
+{% endblock form_content %}

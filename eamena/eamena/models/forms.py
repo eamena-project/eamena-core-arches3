@@ -1394,28 +1394,43 @@ class FindLocationForm(ResourceForm):
             },
         }
 
-class FindMaterialAndTechniqueForm(ResourceForm):
+class FindAssessmentForm(ResourceForm):
     @staticmethod
     def get_info():
         return {
-            'id': 'find-material',
-            'icon': 'fa-map-marker',
-            'name': _('Material and Technique'),
-            'class': FindMaterialAndTechniqueForm
+            'id': 'find-assessment',
+            'icon': 'fa-tag',
+            'name': _('Find Assessment'),
+            'class': FindAssessmentForm
         }
 
     def update(self, data, files):
+        self.update_nodes('FIND_ID.E42', data)
         self.update_nodes('PRODUCTION.E12', data)
+        self.update_nodes('FIND_NOTES.E62', data)
         return
 
     def load(self, lang):
 
+        self.data['FIND_ID.E42'] = {
+            'branch_lists': self.get_nodes('FIND_ID.E42'),
+            'domains': {},
+        }
         self.data['PRODUCTION.E12'] = {
             'branch_lists': self.get_nodes('PRODUCTION.E12'),
             'domains': {
+                'PERIOD_TYPE.I4': Concept().get_e55_domain('PERIOD_TYPE.I4'),
+                'PERIOD_CERTAINTY_BELIEF_VALUE.I6': Concept().get_e55_domain('PERIOD_CERTAINTY_BELIEF_VALUE.I6'),
+                'FIND_CATEGORY_TYPE.E55': Concept().get_e55_domain('FIND_CATEGORY_TYPE.E55'),
+                'FIND_SUB_CATEGORY_TYPE.E55': Concept().get_e55_domain('FIND_SUB_CATEGORY_TYPE.E55'),
+                'FIND_DETAILED_CATEGORY_TYPE.E55': Concept().get_e55_domain('FIND_DETAILED_CATEGORY_TYPE.E55'),
                 'TECHNIQUE_TYPE.E55': Concept().get_e55_domain('TECHNIQUE_TYPE.E55'),
                 'MATERIAL.E57': Concept().get_e55_domain('MATERIAL.E57'),
             },
+        }
+        self.data['FIND_NOTES.E62'] = {
+            'branch_lists': self.get_nodes('FIND_NOTES.E62'),
+            'domains': {},
         }
 
 class CoverageForm(ResourceForm):
