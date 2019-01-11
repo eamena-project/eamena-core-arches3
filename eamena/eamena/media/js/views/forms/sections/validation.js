@@ -76,10 +76,11 @@ define(['jquery',
             if (options == undefined) {
                 var options = {"canBeEmpty":[],"mustBeFilled":[]}
             }
-
+            console.log(nodes)
             var valid = true;
             _.each(nodes, function (node) {
-
+                // skip semantic nodes that have already been saved but will never have a value
+                if (node.businesstablename == "" && node.entityid != "") {return}
                 // use optional canBeEmpty and/or mustBeFilled arrays if provided
                 if (options.canBeEmpty || options.mustBeFilled) {
                     if (options.canBeEmpty){
