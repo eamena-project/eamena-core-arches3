@@ -1394,6 +1394,30 @@ class FindLocationForm(ResourceForm):
             },
         }
 
+class FindMaterialAndTechniqueForm(ResourceForm):
+    @staticmethod
+    def get_info():
+        return {
+            'id': 'find-material',
+            'icon': 'fa-map-marker',
+            'name': _('Material and Technique'),
+            'class': FindMaterialAndTechniqueForm
+        }
+
+    def update(self, data, files):
+        self.update_nodes('PRODUCTION.E12', data)
+        return
+
+    def load(self, lang):
+
+        self.data['PRODUCTION.E12'] = {
+            'branch_lists': self.get_nodes('PRODUCTION.E12'),
+            'domains': {
+                'TECHNIQUE_TYPE.E55': Concept().get_e55_domain('TECHNIQUE_TYPE.E55'),
+                'MATERIAL.E57': Concept().get_e55_domain('MATERIAL.E57'),
+            },
+        }
+
 class CoverageForm(ResourceForm):
     @staticmethod
     def get_info():

@@ -100,6 +100,7 @@ class Resource(ArchesResource):
             description_group['forms'][:0] = [
                 forms.FindLocationForm.get_info(),
                 forms.MeasurementvaluesForm.get_info(),
+                forms.FindMaterialAndTechniqueForm.get_info(),
                 forms.RelatedFilesForm.get_info(),
                 forms.RelatedResourcesForm.get_info(),
             ]
