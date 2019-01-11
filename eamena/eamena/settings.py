@@ -40,7 +40,7 @@ EAMENA_RESOURCES = {
 'HERITAGE_RESOURCE_GROUP.E27' : 'IDIHA',
 'HERITAGE_FEATURE.E24': 'IDIHA-F',
 'HERITAGE_COMPONENT.B2': 'IDIHA-C',
-'ARCHAEOLOGICAL_FIND.E19': 'FIND',
+'ARCHAEOLOGICAL_FIND.E19': 'IDIHA-FIND',
 
 }
 
@@ -124,7 +124,7 @@ def RESOURCE_TYPE_CONFIGS():
             'stroke_color': '#000000',
             'fill_color': '#eedbad',
             'primary_name_lookup': {
-                'entity_type': 'FIND_ID.E42',
+                'entity_type': 'EAMENA_ID.E42',
                 'lookup_value': 'Primary'
             },
             'sort_order': 4
