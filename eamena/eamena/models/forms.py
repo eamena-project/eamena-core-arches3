@@ -262,7 +262,31 @@ class AssessmentSummaryForm(ResourceForm):
                     'ASSESSMENT_ACTIVITY_TYPE.E55' : Concept().get_e55_domain('ASSESSMENT_ACTIVITY_TYPE.E55'),
                 }
             }
-            
+
+# --- Assessment  Summary -> AssessmentSummaryForm ------------------------------------------
+class FindAssessmentSummaryForm(ResourceForm):
+    @staticmethod
+    def get_info():
+        return {
+            'id': 'find-assessment-summary',
+            'icon': 'fa-users',
+            'name': _('Assessment Summary'),
+            'class': FindAssessmentSummaryForm
+        }
+
+    def update(self, data, files):
+        self.update_nodes('INVESTIGATION_ACTIVITY.E7', data)
+        return
+
+    def load(self, lang):
+        if self.resource:
+            self.data['INVESTIGATION_ACTIVITY.E7'] = {
+                'branch_lists': datetime_nodes_to_dates(self.get_nodes('INVESTIGATION_ACTIVITY.E7')),
+                'domains': {
+                    'INVESTIGATOR_ROLE_TYPE.E55' : Concept().get_e55_domain('INVESTIGATOR_ROLE_TYPE.E55'),
+                    'ACTIVITY_TYPE.E55' : Concept().get_e55_domain('ACTIVITY_TYPE.E55'),
+                }
+            }
 
 class ComponentAssessmentForm(ResourceForm):
     @staticmethod

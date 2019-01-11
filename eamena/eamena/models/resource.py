@@ -98,7 +98,7 @@ class Resource(ArchesResource):
             
         elif self.entitytypeid == 'ARCHAEOLOGICAL_FIND.E19':
             description_group['forms'][:0] = [
-                forms.AssessmentSummaryForm.get_info(),
+                forms.FindAssessmentSummaryForm.get_info(),
                 forms.FindAssessmentForm.get_info(),
                 forms.FindLocationForm.get_info(),
                 forms.MeasurementvaluesForm.get_info(),
