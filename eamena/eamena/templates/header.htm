@@ -69,7 +69,21 @@
                     <span class="fa fa-bars"></span>
                 </button>
                 <a class="navbar-brand" href="{% url 'home' %}">
-                    <img id="logo-header" class="arches-logo" src="{{ STATIC_URL }}img/eamena_logo.jpg" alt="Logo">
+                    <picture>
+                        <img
+                        sizes="(max-width: 767px) calc(100vw - 100px) ,
+                               (max-width: 991px) 286px,
+                               (max-width: 1199px) 350px,
+                               550px"
+                        srcset="
+                        {{ STATIC_URL }}img/responsive/eamena_logo_wqdwpt_c_scale,w_200.jpg 200w,
+                        {{ STATIC_URL }}img/responsive/eamena_logo_wqdwpt_c_scale,w_409.jpg 409w,
+                        {{ STATIC_URL }}img/responsive/eamena_logo_wqdwpt_c_scale,w_578.jpg 578w,
+                        {{ STATIC_URL }}img/responsive/eamena_logo_wqdwpt_c_scale,w_746.jpg 746w,
+                        {{ STATIC_URL }}img/responsive/eamena_logo_wqdwpt_c_scale,w_830.jpg 830w"
+                        src="{{ STATIC_URL }}img/responsive/eamena_logo_wqdwpt_c_scale,w_830.jpg"
+                        alt="Logo">
+                    </picture>
                 </a>
             </div>
 
