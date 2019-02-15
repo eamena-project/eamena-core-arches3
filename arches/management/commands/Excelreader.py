@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 import arches.app.models.models as archesmodels
 from arches.management.commands import utils
 from django.contrib.gis.geos import GEOSGeometry
+from arches.app.models.entity import Entity
 
 class Command(BaseCommand):
     
@@ -44,7 +45,11 @@ class Command(BaseCommand):
                 )
 
                 if vtype == 'headers':
-                    result = self.validate_headers(workbook, skip_resourceid_col=options['append_data'])
+                    print "resourcetype"
+                    print options['res_type']
+                    result = self.validate_headers(workbook, 
+                        skip_resourceid_col=options['append_data'],
+                        resource_type=options['res_type'])
                     
                 elif vtype == 'rows_and_values':
                     result = self.validate_rows_and_values(workbook)
@@ -226,18 +231,22 @@ class Command(BaseCommand):
 
         return msgs
 
-    def validate_headers(self, workbook, skip_resourceid_col = False):
+    def validate_headers(self, workbook, skip_resourceid_col = False, resource_type=None):
+    
+        q = Entity().get_mapping_schema(resource_type)
+        restypenodes = set(q.keys())
+        
         result = {'success':True,'errors':[]}
         for sheet in workbook.worksheets:
             for header in sheet.iter_cols(max_row = 1):
-                if header[0].value is not None:
+                nodename = header[0].value
+                if nodename is not None:
                     if skip_resourceid_col == True and header[0].value =='RESOURCEID':
                         continue
-                    try:
-                        modelinstance = archesmodels.EntityTypes.objects.get(pk = header[0].value)
-                        
-                    except archesmodels.EntityTypes.DoesNotExist:
-                        result['errors'].append("The header %s is not a valid EAMENA node name" % header[0].value)
+                    if not nodename in restypenodes:
+                        msg = "{} is not a valid {} node name".format(
+                            nodename, resource_type)
+                        result['errors'].append(msg)
         if result['errors']:
             result['success'] = False
         return result
