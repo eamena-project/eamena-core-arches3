@@ -30,6 +30,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from django.db import connection
 from django.db import transaction
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+from django.core.files import File
 from arches.app.models.concept import Concept
 from arches.app.utils.betterJSONSerializer import JSONSerializer, JSONDeserializer
 from django.core.exceptions import ObjectDoesNotExist
@@ -126,7 +127,7 @@ class Entity(object):
 
         uniqueid_node = settings.RESOURCE_TYPE_CONFIGS()[self.entitytypeid]['primary_name_lookup']['entity_type']
         if entitytype in settings.EAMENA_RESOURCES:
-          type = 'EAMENA'
+          type = settings.EAMENA_RESOURCES[entitytype]
         else:
           type = re.split("\W+|_", entitytype)[0]
             
@@ -241,6 +242,7 @@ class Entity(object):
                     themodelinstance.save()
                     self.value = themodelinstance.geturl()
                     self.label = themodelinstance.getname()
+
 
         for child_entity in self.child_entities:
             child = child_entity._save()
