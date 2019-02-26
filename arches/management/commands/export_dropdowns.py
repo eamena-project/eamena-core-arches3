@@ -25,7 +25,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         if options['destination'] is None:
-            filepath = "dropdown_contents.json"
+            if os.path.isfile(settings.SKOS_FILE_LOCATION):
+                filepath = settings.SKOS_FILE_LOCATION.replace(".xml","_collections.json")
+            else:
+                filepath = "dropdown_contents.json"
         else:
             filepath = options['destination']
 
