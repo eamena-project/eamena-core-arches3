@@ -26,6 +26,8 @@ from time import time
 from arches.app.models.concept import Concept
 from arches.app.models import models
 
+ARCHES = Namespace("http://www.archesproject.org/")
+
 class SKOSReader(object):
     def __init__(self):
         self.nodes = []
@@ -57,6 +59,8 @@ class SKOSReader(object):
         value_types = models.ValueTypes.objects.all()
         skos_value_types = value_types.filter(namespace = 'skos')
         skos_value_types_list = skos_value_types.values_list('valuetype', flat=True)
+        arches_value_types = value_types.filter(namespace = 'arches')
+        arches_value_types_list = arches_value_types.values_list('valuetype', flat=True)
         dcterms_value_types = value_types.filter(namespace = 'dcterms')
 
         relation_types = models.DRelationtypes.objects.all()
@@ -136,7 +140,11 @@ class SKOSReader(object):
                                 self.relations.append({'source': self.generate_uuid_from_subject(baseuuid, s), 'type': relation_or_value_type, 'target': self.generate_uuid_from_subject(baseuuid, object)})
                             elif predicate == SKOS.related:
                                 self.relations.append({'source': self.generate_uuid_from_subject(baseuuid, s), 'type': relation_or_value_type, 'target': self.generate_uuid_from_subject(baseuuid, object)})
-
+                        elif str(ARCHES) in predicate:
+                            relation_or_value_type = predicate.replace(ARCHES, '')
+                            if relation_or_value_type in arches_value_types_list:
+                                value_type = arches_value_types.get(valuetype=relation_or_value_type)
+                                concept.addvalue({'value':object, 'language': object.language, 'type': value_type.valuetype, 'category': value_type.category})
                     self.nodes.append(concept)
                 
             # insert and index the concpets
