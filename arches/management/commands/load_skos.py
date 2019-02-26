@@ -1,11 +1,12 @@
 import os
-import unicodecsv
+import json
 import uuid
+import unicodecsv
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from optparse import make_option
 from arches.app.models.concept import Concept
-from arches.app.models.models import ConceptRelations
+from arches.app.models.models import ConceptRelations, Concepts
 
 from arches.app.utils.skos import SKOSReader
 
@@ -27,9 +28,19 @@ class Command(BaseCommand):
                 exit()
             filepath = options['source']
 
-        lookups = self.test_linking_file(filepath)
         schemeid = self.load_skos(filepath)
-        self.link_dropdowns(schemeid,lookups)
+
+        dropdown_file = filepath.replace(".xml","_collections.json")
+        if os.path.isfile(dropdown_file):
+            print "loading collection contents"
+            self.load_dropdown_data(dropdown_file)
+
+        # DEPRECATE - this is the old strategy of creating dropdowns
+        # that mirror the scheme structure in favor of loading the
+        # actual exported dropdowns file
+
+        # lookups = self.test_linking_file(filepath)
+        # self.link_dropdowns(schemeid,lookups)
 
     def load_skos(self,skosfile):
 
@@ -42,7 +53,43 @@ class Command(BaseCommand):
         print "DONE"
 
         return schemeid
-    
+
+    def load_dropdown_data(self, sourcefile):
+
+        with open(sourcefile, "rb") as openf:
+            dropdown_data = json.loads(openf.read())
+
+        print len(dropdown_data)
+        for name, collection in dropdown_data.iteritems():
+            for member in collection:
+
+                # first try to use and existing concept for "from". this is
+                # in the case of dropdowns items that are nested within other
+                # dropdown items (i.e. concepts)
+                try:
+                    fromid = Concepts.objects.get(conceptid=member["from"])
+                # if "from" doesn't match any existing concepts, assume that
+                # this is a connection to the top concept (whose id can change
+                # from one installation to the next). in this case, use the
+                # name of the top concept (which will be the same from one
+                # installation to the next)
+                except Concepts.DoesNotExist:
+                    try:
+                        fromid = Concepts.objects.get(legacyoid=name.upper()).conceptid
+                    except Concepts.DoesNotExist:
+                        continue
+                newrelation = ConceptRelations(
+                    relationid = uuid.uuid4(),
+                    conceptidfrom_id=fromid,
+                    conceptidto_id=member["to"],
+                    relationtype_id="member"
+                )
+                try:
+                    newrelation.save()
+                except Exception as e:
+                    print e
+                    print member["from"], member["to"]
+
     def test_linking_file(self,skosfilepath):
         
         print "loading and testing the lookups file"
@@ -93,7 +140,7 @@ class Command(BaseCommand):
         full_graph = Concept().get(
                 id=schemeid,
                 include_subconcepts=True,
-                depth_limit=2,
+                # depth_limit=2,
             )
 
         # make a dictionary of all the top concepts
