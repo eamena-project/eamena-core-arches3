@@ -12,10 +12,6 @@ from arches.app.utils.skos import SKOSReader
 class Command(BaseCommand):
 
     option_list = BaseCommand.option_list + (
-        # make_option('-o', '--operation', action='store',
-            # type='choice', 
-            # choices=['load','link'],
-            # help="path to skosfile"),
         make_option('-s', '--source', action='store', default=None,
             help="path to skosfile"),
     )
