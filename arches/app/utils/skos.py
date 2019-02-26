@@ -163,7 +163,12 @@ class SKOSReader(object):
             raise Exception('graph argument should be of type rdflib.graph.Graph')
 
     def generate_uuid_from_subject(self, baseuuid, subject):
-        return str(uuid.uuid3(baseuuid, str(subject)))
+
+        try:
+            returnid = str(uuid.UUID(subject.split("/")[-1]))
+        except ValueError:
+            returnid = str(uuid.uuid3(baseuuid, str(subject)))
+        return returnid
 
 
 class SKOSWriter(object):
