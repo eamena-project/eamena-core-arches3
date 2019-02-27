@@ -100,6 +100,11 @@ RESOURCE_MARKER_DEFAULT_COLOR = '#C4171D'
 BING_KEY = ''
 GOOGLE_ANALYTICS_TRACKING_ID = None
 
+# Absolute filesystem path to the directory holds bulk upload data.
+# These must be set at the app-level, not here in core Arches.
+BULK_UPLOAD_DIR = None
+BULK_UPLOAD_LOG_FILE = None
+
 def RESOURCE_TYPE_CONFIGS():
     return {
         # override this setting in your packages settings.py file

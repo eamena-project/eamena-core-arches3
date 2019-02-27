@@ -57,6 +57,12 @@ urlpatterns = patterns('',
     url(r'^reports/(?P<resourceid>%s)$' % uuid_regex , 'arches.app.views.resources.report', name='report'),
     url(r'^resource-debug/(?P<resourceid>%s)$' % uuid_regex, 'arches.app.views.resources.debug_view', name="resource_debug"),
     url(r'^get_admin_areas','arches.app.views.resources.get_admin_areas', name='get_admin_areas'),
+    url(r'^bulk-upload/$', 'arches.app.views.bulk_upload.main', name="bulk_upload"),
+    url(r'^bulk-upload/new$', 'arches.app.views.bulk_upload.new_upload', name="new_upload"),
+    url(r'^bulk-upload/excel-upload$', 'arches.app.views.bulk_upload.upload_spreadsheet', name="excel_upload"),
+    url(r'^bulk-upload/validate$', 'arches.app.views.bulk_upload.validate', name="excel_validate"),
+    url(r'^bulk-upload/import$', 'arches.app.views.bulk_upload.import_archesfile', name="excel_import"),
+    url(r'^bulk-upload/attachments$', 'arches.app.views.bulk_upload.upload_attachments', name='upload_attachments'),
 
     # Uncomment the admin/doc line below to enable admin documentation:
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
