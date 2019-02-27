@@ -63,6 +63,10 @@ urlpatterns = patterns('',
     url(r'^bulk-upload/validate$', 'arches.app.views.bulk_upload.validate', name="excel_validate"),
     url(r'^bulk-upload/import$', 'arches.app.views.bulk_upload.import_archesfile', name="excel_import"),
     url(r'^bulk-upload/attachments$', 'arches.app.views.bulk_upload.upload_attachments', name='upload_attachments'),
+    url(r'^admin/auth/user/(?P<userid>[0-9]*)/user_activity/$' , 'arches.app.views.user_activity.user_activity', name='user_activity'),
+    url(r'^admin/auth/group/(?P<groupid>[0-9]*)/group_activity/$' , 'arches.app.views.group_activity.group_activity', name='group_activity'),
+    url(r'^admin/auth/user/(?P<userid>[0-9]*)/user_activity_data/$' , 'arches.app.views.user_activity.user_activity_data', name='user_activity_data'),
+    url(r'^admin/auth/group/(?P<groupid>[0-9]*)/group_activity_data/$' , 'arches.app.views.group_activity.group_activity_data', name='group_activity_data'),
 
     # Uncomment the admin/doc line below to enable admin documentation:
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
