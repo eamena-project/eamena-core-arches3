@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 """This module contains commands for building Arches."""
 
+import unicodecsv
 from optparse import make_option
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
@@ -341,9 +342,42 @@ class Command(BaseCommand):
         anonymous_user.groups.add(read_group)
 
         edit_group = Group.objects.get(name='edit')
+
+        # remove the default Arches admin user (we want more control over this)
         admin_user = User.objects.get(username='admin')
-        admin_user.groups.add(edit_group)
-        admin_user.groups.add(read_group)
+        admin_user.delete()
+
+        # now create users by iterating the initial users CSV
+        if not os.path.isfile(settings.INITIAL_USERS_CONFIG):
+            return
+        with open(settings.INITIAL_USERS_CONFIG, "rb") as opencsv:
+            reader = unicodecsv.DictReader(opencsv)
+            print "\nCREATING USERS\n--------------"
+            for info in reader:
+
+                # create the user object from info in row
+                newuser = User(
+                    username=info['username'],
+                    first_name=info['firstname'],
+                    last_name=info['lastname'],
+                    email=info['email'],
+                )
+                if info['staff'].lower().rstrip() == 'yes':
+                    newuser.is_staff = True
+                if info['superuser'].lower().rstrip() == 'yes':
+                    newuser.is_superuser = True
+                newuser.set_password(info['password'])
+                newuser.save()
+
+                # once saved, add the user to groups as needed
+                for g in info['groups'].split(";"):
+                    gname = g.lstrip().rstrip()
+                    if gname == "read":
+                        newuser.groups.add(read_group)
+                    if gname == "edit":
+                        newuser.groups.add(edit_group)
+
+                print "  --",newuser.username
 
     def build_permissions(self):
         """
