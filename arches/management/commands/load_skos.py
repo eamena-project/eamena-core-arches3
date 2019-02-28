@@ -28,29 +28,33 @@ class Command(BaseCommand):
                 exit()
             filepath = options['source']
 
+        print "\nCONCEPTS\n--------"
+        print "loading skos from file: " + os.path.basename(filepath)
         schemeid = self.load_skos(filepath)
 
-        dropdown_file = filepath.replace(".xml","_collections.json")
-        if os.path.isfile(dropdown_file):
-            print "loading collection contents"
-            self.load_dropdown_data(dropdown_file)
+        print "\nDROPDOWNS\n---------"
+        collection_file = filepath.replace(".xml","_collections.json")
+        lookups_file = filepath.replace(".xml","_lookups.csv")
 
-        # DEPRECATE - this is the old strategy of creating dropdowns
-        # that mirror the scheme structure in favor of loading the
-        # actual exported dropdowns file
+        if os.path.isfile(collection_file):
+            print "loading dropdowns directly from:", collection_file
+            self.load_dropdown_data(collection_file)
 
-        # lookups = self.test_linking_file(filepath)
-        # self.link_dropdowns(schemeid,lookups)
+        elif os.path.isfile(lookups_file):
+            print "creating dropdowns based on lookups:", lookups_file
+            lookups = self.test_linking_file(lookups_file)
+            self.link_dropdowns(schemeid,lookups)
+        
+        else:
+            print "no dropdown data to load."
 
     def load_skos(self,skosfile):
 
-        print "loading skos: " + os.path.basename(skosfile)
         skos = SKOSReader()
         rdf = skos.read_file(skosfile)
         ret = skos.save_concepts_from_skos(rdf)
 
         schemeid = [i.id for i in ret.nodes if i.nodetype == "ConceptScheme"][0]
-        print "DONE"
 
         return schemeid
 
@@ -90,7 +94,7 @@ class Command(BaseCommand):
                     print e
                     print member["from"], member["to"]
 
-    def test_linking_file(self,skosfilepath):
+    def test_linking_file(self,lfile):
         
         print "loading and testing the lookups file"
         # these are the relations from the dropdown scheme to actual collections
@@ -104,7 +108,6 @@ class Command(BaseCommand):
         all_node_names = [Concept().get(id=cid).legacyoid for cid in collection_ids]
 
         lookups = {}
-        lfile = skosfilepath.replace(".xml","_lookups.csv")
 
         with open(lfile, "rb") as openfile:
             reader = unicodecsv.reader(openfile)
