@@ -1,0 +1,2 @@
+username,firstname,lastname,email,password,superuser,staff,groups
+admin,,,,admin,yes,yes,edit;read

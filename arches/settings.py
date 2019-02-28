@@ -147,6 +147,8 @@ APP_NAME = 'Arches v3.0'
 
 ROOT_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
+INITIAL_USERS_CONFIG = os.path.join(ROOT_DIR,"install","initial_users.csv")
+
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
 )
