@@ -71,43 +71,49 @@ def search_terms(request):
         
         # if a group is selected we have to filter out the results that don't belong to the selected group
         if group_root_node != 'No group':
+            entities = []
             if 'conceptid' in result['_source']['options']:
                 # concept: find the entity_type to check if it is connected to the selected group
                 valueid = result['_source']['options']["conceptid"]
                 
                 value_relations_to = models.ConceptRelations.objects.filter(conceptidto=valueid, relationtype='member')
                 
-                if len(value_relations_to):
-                    value_parent_concept = models.Concepts.objects.filter(conceptid=value_relations_to[0].conceptidfrom)
-                    parent_relations_to = models.ConceptRelations.objects.filter(conceptidto=value_parent_concept[0].conceptid, relationtype='member')
-                    
-                    if value_parent_concept[0].nodetype.nodetype == 'Concept':
-                        # need to get at the parent until we reach the root collection. concepts are arranged hierarchically
-                        grandparent = models.Concepts.objects.filter(conceptid=parent_relations_to[0].conceptidfrom)
-                        entity_type = grandparent[0].legacyoid
-                        
-                    elif value_parent_concept[0].nodetype.nodetype == 'Collection':
-                        entity_type = value_parent_concept[0].legacyoid
-                    else:
-                        logging.warning("Not a concept or collection")
+                if value_relations_to:
+                    for value_relations_to_concept in value_relations_to:
+                        value_parent_concept = models.Concepts.objects.filter(conceptid=value_relations_to_concept.conceptidfrom)
+                        parent_relations_to = models.ConceptRelations.objects.filter(conceptidto=value_parent_concept[0].conceptid, relationtype='member')
+
+                        if value_parent_concept[0].nodetype.nodetype == 'Concept':
+                            # need to get at the parent until we reach the root collection. concepts are arranged hierarchically
+                            grandparent = models.Concepts.objects.filter(conceptid=parent_relations_to[0].conceptidfrom)
+                            entity_type = grandparent[0].legacyoid
+                            entities.append(entity_type)
+
+                        elif value_parent_concept[0].nodetype.nodetype == 'Collection':
+                            entity_type = value_parent_concept[0].legacyoid
+                            entities.append(entity_type)
+                        else:
+                            logging.warning("Not a concept or collection")
 
             else:
                 # not a concept - possibly a name field or similar. Use the context
                 entity_type = models.EntityTypes.objects.filter(conceptid=result['_source']['context'])
+                entities.append(entity_type)
 
             delete_result = True
             # check the if the entity_type is under the selected root group node
             # so that it can be deleted later
-            if entity_type:
-                res = Entity().get_mapping_schema_to(entity_type)
+            if entities:
+                for entity_type in entities:
+                    res = Entity().get_mapping_schema_to(entity_type)
 
-                # search parents for group_root_node
-                for resourcetype in settings.RESOURCE_TYPE_CONFIGS().keys():
-                    if resourcetype in res:
-                        for parent in res[resourcetype]['steps']:
-                            if parent['entitytyperange'] == group_root_node:
-                                delete_result = False
-                                break
+                    # search parents for group_root_node
+                    for resourcetype in settings.RESOURCE_TYPE_CONFIGS().keys():
+                        if resourcetype in res:
+                            for parent in res[resourcetype]['steps']:
+                                if parent['entitytyperange'] == group_root_node:
+                                    delete_result = False
+                                    break
                 
             if delete_result:
                 delete_results.append(result)
@@ -217,26 +223,29 @@ def build_search_results_dsl(request):
                         # trace path from group root to this term
                         if term['type'] == 'concept':
 
-                            # get the parent concept for this value i.e. the field
-                            term_parent_concept = Concept.get_parent_concept(term['value'])
+                            # get all the parent concepts for this value i.e. the field
+                            concept_relations = models.ConceptRelations.objects.filter(conceptidto=term['value'], relationtype="member")
+                            for relation in concept_relations:
+                                term_parent_concept = models.Concepts.objects.get(conceptid=relation.conceptidfrom)
 
-                            # get the steps from the root to that concept
-                            if term_parent_concept.nodetype.nodetype == "Collection":
-                                term_schema = Entity.get_mapping_schema_to(term_parent_concept.legacyoid)
-                            elif term_parent_concept.nodetype.nodetype == 'Concept':
-                                # need to get at the parent until we reach the root collection. concepts are arranged hierarchically
-                                parent_relations_to = models.ConceptRelations.objects.filter(conceptidto=term_parent_concept.conceptid, relationtype='member')
-                                grandparent = models.Concepts.objects.filter(conceptid=parent_relations_to[0].conceptidfrom)
-                                term_schema = Entity.get_mapping_schema_to(grandparent[0].legacyoid)
+                                # get the steps from the root to that concept
+                                if term_parent_concept.nodetype.nodetype == "Collection":
+                                    term_schema = Entity.get_mapping_schema_to(term_parent_concept.legacyoid)
+                                elif term_parent_concept.nodetype.nodetype == 'Concept':
+                                    # need to get at the parent until we reach the root collection. concepts are arranged hierarchically
+                                    parent_relations_to = models.ConceptRelations.objects.filter(conceptidto=term_parent_concept.conceptid, relationtype='member')
+                                    grandparent = models.Concepts.objects.filter(conceptid=parent_relations_to[0].conceptidfrom)
+                                    term_schema = Entity.get_mapping_schema_to(grandparent[0].legacyoid)
 
-                            #this path begins at the root, and ends up at the node in question
-                            if resourcetype in term_schema:
-                                term_path = term_schema[resourcetype]['steps']
+                                #this path begins at the root, and ends up at the node in question
+                                if resourcetype in term_schema:
+                                    term_path = term_schema[resourcetype]['steps']
 
-                                term_paths.append({
-                                    'term': term,
-                                    'path': term_path
-                                })
+                                    term_paths.append({
+                                        'term': term,
+                                        'path': term_path
+                                    })
+                                    break
 
                         elif term['type'] == 'term':
 
