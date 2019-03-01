@@ -244,18 +244,14 @@ ORDER_REPORT_SECTIONS_BY= {
 }
 
 
-SEARCH_GROUP_ROOTS= [
-    ('NAME.E41', _('Resource Names')),
-    ('SITE_FUNCTION_TYPE.E55', _('Site function')),
-    ('CULTURAL_PERIOD.E55', _('Cultural period')),
-    ('ASSESSMENT_TYPE.E55', _('Assessment')),
-    ('FEATURE_EVIDENCE_ASSIGNMENT.E17', _('Feature form')),
-    ('FEATURE_EVIDENCE_INTERPRETATION_ASSIGNMENT.E17', _('Feature interpretation')),
-    ('DISTURBANCE_STATE.E3', _('Disturbance assessment')),
-    ('THREAT_STATE.E3', _('Threat assessment')),
-    ('PROTECTION_EVENT.E65', _('Designation')),
-    ('MEASUREMENT_TYPE.E55', _('Measurements')),
-    ('PLACE_ADDRESS.E45', _('Addresses'))
+SEARCH_GROUP_ROOTS = [
+    ('NAME.E41', _('Resource Names')),  # E27, E24
+    ('CULTURAL_PERIOD_BELIEF.I2', _('Cultural period')),  # E27, E24
+    ('FEATURE_ASSIGNMENT.E13', _('Feature Morphology')),  # E27
+    ('PRODUCTION.E12', _('Function Interpretation')),  # E27, E24 also contains cultural period
+    ('DAMAGE_STATE.E3', _('Damage')),  # E27, E24, B2
+    ('THREAT_INFERENCE_MAKING.I5', _('Threat')),  # E27, B2
+    ('POTENTIAL_STATE_PREDICTION.XX1', _('Risk')),  # E24 also contains mitigation and threat
 ]
 
 EXPORT_CONFIG = os.path.normpath(os.path.join(PACKAGE_ROOT, 'source_data', 'business_data', 'resource_export_mappings.json'))
