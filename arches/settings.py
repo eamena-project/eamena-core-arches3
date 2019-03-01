@@ -334,6 +334,8 @@ PACKAGE_VALIDATOR = 'arches.app.utils.mock_package_validator'
 # NOTE: This is not used by the front end of the application.
 DATA_VALIDATION_BBOX = [(-180,-90), (-180,90), (180,90), (180,-90), (-180,-90)]
 
+SEARCH_GROUP_ROOTS = []
+
 try:
     from settings_local import *
 except ImportError:
