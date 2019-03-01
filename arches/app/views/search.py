@@ -102,11 +102,12 @@ def search_terms(request):
                 res = Entity().get_mapping_schema_to(entity_type)
 
                 # search parents for group_root_node
-                if 'HERITAGE_RESOURCE_GROUP.E27' in res:
-                    for parent in res['HERITAGE_RESOURCE_GROUP.E27']['steps']:
-                        if parent['entitytyperange'] == group_root_node:
-                            delete_result = False
-                            break
+                for resourcetype in settings.RESOURCE_TYPE_CONFIGS().keys():
+                    if resourcetype in res:
+                        for parent in res[resourcetype]['steps']:
+                            if parent['entitytyperange'] == group_root_node:
+                                delete_result = False
+                                break
                 
             if delete_result:
                 delete_results.append(result)
@@ -206,99 +207,67 @@ def build_search_results_dsl(request):
             groupid = filter_grouping[index]
             if not groupid == 'No group':
                 # build a nested query against the nested_entities
-                
-                # trace the path from each term to the group root
-                term_paths = []
-                for term in select_box:
 
-                    # trace path from group root to this term
-                    if term['type'] == 'concept':
-                        
-                        # get the parent concept for this value i.e. the field
-                        term_parent_concept = Concept.get_parent_concept(term['value'])
-                        
-                        # get the steps from the root to that concept
-                        if term_parent_concept.nodetype.nodetype == "Collection":
-                            term_schema = Entity.get_mapping_schema_to(term_parent_concept.legacyoid)
-                        elif term_parent_concept.nodetype.nodetype == 'Concept':
-                            # need to get at the parent until we reach the root collection. concepts are arranged hierarchically
-                            parent_relations_to = models.ConceptRelations.objects.filter(conceptidto=term_parent_concept.conceptid, relationtype='member')
-                            grandparent = models.Concepts.objects.filter(conceptid=parent_relations_to[0].conceptidfrom)
-                            term_schema = Entity.get_mapping_schema_to(grandparent[0].legacyoid)
-                        
-                        #this path begins at the root, and ends up at the node in question
-                        term_path = term_schema['HERITAGE_RESOURCE_GROUP.E27']['steps']
-                        
-                        term_paths.append({
-                            'term': term,
-                            'path': term_path
-                        })
-                        
-                    elif term['type'] == 'term':
+                # build a nested query for each resource type
+                for resourcetype in settings.RESOURCE_TYPE_CONFIGS().keys():
+                    # trace the path from each term to the group root
+                    term_paths = []
+                    for term in select_box:
 
-                        concept = models.Concepts.objects.get(conceptid=term['context'])
-                        term_schema = Entity.get_mapping_schema_to(concept.legacyoid)
-                        term_path = term_schema['HERITAGE_RESOURCE_GROUP.E27']['steps']
-                        
-                        term_paths.append({
-                            'term': term,
-                            'path': term_path
-                        })
+                        # trace path from group root to this term
+                        if term['type'] == 'concept':
 
-                    elif term['type'] == 'string':
-                        term_schema = Entity.get_mapping_schema_to(groupid)
-                        term_path = term_schema['HERITAGE_RESOURCE_GROUP.E27']['steps']
-                        
-                        term_paths.append({
-                            'term': term,
-                            'path': term_path
-                        })
-                        
-                if 'year_min_max' in temporal_filter[index] and len(temporal_filter[index]['year_min_max']) == 2:
-                    start_date = date(temporal_filter[index]['year_min_max'][0], 1, 1)
-                    end_date = date(temporal_filter[index]['year_min_max'][1], 12, 31)
-                    if start_date:
-                        start_date = start_date.isoformat()
-                    if end_date:
-                        end_date = end_date.isoformat()
+                            # get the parent concept for this value i.e. the field
+                            term_parent_concept = Concept.get_parent_concept(term['value'])
 
-                    if 'inverted' not in temporal_filter[index]:
-                        inverted_temporal_filter = False
-                    else:
-                        if temporal_filter[index]['inverted']:
-                            inverted_temporal_filter = True
-                        else:
-                            inverted_temporal_filter = False
-                    
-                    term_paths.append({
-                        'term': {
-                            'date_operator': '3',
-                            'start_date': start_date,
-                            'end_date': end_date,
-                            'type': 'date',
-                            'inverted': inverted_temporal_filter
-                        },
-                        'path': term_path
-                    })
-                    
-                    
-                if 'filters' in temporal_filter[index]:
-                    term_schema = Entity.get_mapping_schema_to(groupid)
-                    term_path = term_schema['HERITAGE_RESOURCE_GROUP.E27']['steps']
+                            # get the steps from the root to that concept
+                            if term_parent_concept.nodetype.nodetype == "Collection":
+                                term_schema = Entity.get_mapping_schema_to(term_parent_concept.legacyoid)
+                            elif term_parent_concept.nodetype.nodetype == 'Concept':
+                                # need to get at the parent until we reach the root collection. concepts are arranged hierarchically
+                                parent_relations_to = models.ConceptRelations.objects.filter(conceptidto=term_parent_concept.conceptid, relationtype='member')
+                                grandparent = models.Concepts.objects.filter(conceptid=parent_relations_to[0].conceptidfrom)
+                                term_schema = Entity.get_mapping_schema_to(grandparent[0].legacyoid)
 
-                    for temporal_filter_item in temporal_filter[index]['filters']:
-                        date_type = ''
-                        searchdate = ''
-                        date_operator = ''
-                        for node in temporal_filter_item['nodes']:
-                            if node['entitytypeid'] == 'DATE_COMPARISON_OPERATOR.E55':
-                                date_operator = node['value']
-                            elif node['entitytypeid'] == 'date':
-                                searchdate = node['value']
-                            else:
-                                date_type = node['value']
-                
-                        date_value = datetime.strptime(searchdate, '%Y-%m-%d').isoformat()
+                            #this path begins at the root, and ends up at the node in question
+                            if resourcetype in term_schema:
+                                term_path = term_schema[resourcetype]['steps']
+
+                                term_paths.append({
+                                    'term': term,
+                                    'path': term_path
+                                })
+
+                        elif term['type'] == 'term':
+
+                            concept = models.Concepts.objects.get(conceptid=term['context'])
+                            term_schema = Entity.get_mapping_schema_to(concept.legacyoid)
+                            if resourcetype in term_schema:
+                                term_path = term_schema[resourcetype]['steps']
+
+                                term_paths.append({
+                                    'term': term,
+                                    'path': term_path
+                                })
+
+                        elif term['type'] == 'string':
+                            term_schema = Entity.get_mapping_schema_to(groupid)
+                            if resourcetype in term_schema:
+                                term_path = term_schema[resourcetype]['steps']
+
+                                term_paths.append({
+                                    'term': term,
+                                    'path': term_path
+                                })
+
+                    if 'year_min_max' in temporal_filter[index] and len(temporal_filter[index]['year_min_max']) == 2:
+                        start_date = date(temporal_filter[index]['year_min_max'][0], 1, 1)
+                        end_date = date(temporal_filter[index]['year_min_max'][1], 12, 31)
+                        if start_date:
+                            start_date = start_date.isoformat()
+                        if end_date:
+                            end_date = end_date.isoformat()
+
                         if 'inverted' not in temporal_filter[index]:
                             inverted_temporal_filter = False
                         else:
@@ -306,23 +275,61 @@ def build_search_results_dsl(request):
                                 inverted_temporal_filter = True
                             else:
                                 inverted_temporal_filter = False
-                                
+
                         term_paths.append({
                             'term': {
-                                'date_operator': date_operator,
-                                'date_value': date_value,
+                                'date_operator': '3',
+                                'start_date': start_date,
+                                'end_date': end_date,
                                 'type': 'date',
                                 'inverted': inverted_temporal_filter
                             },
                             'path': term_path
                         })
 
-                # combine the traced path to build a nested query                
-                group_query = nested_query_from_pathed_values(term_paths, 'nested_entity.child_entities')
 
-                
-                # add nested query to overall query
-                selectbox_boolfilter.must(group_query)
+                    if 'filters' in temporal_filter[index]:
+                        term_schema = Entity.get_mapping_schema_to(groupid)
+                        if resourcetype in term_schema:
+                            term_path = term_schema[resourcetype]['steps']
+
+                            for temporal_filter_item in temporal_filter[index]['filters']:
+                                date_type = ''
+                                searchdate = ''
+                                date_operator = ''
+                                for node in temporal_filter_item['nodes']:
+                                    if node['entitytypeid'] == 'DATE_COMPARISON_OPERATOR.E55':
+                                        date_operator = node['value']
+                                    elif node['entitytypeid'] == 'date':
+                                        searchdate = node['value']
+                                    else:
+                                        date_type = node['value']
+
+                                date_value = datetime.strptime(searchdate, '%Y-%m-%d').isoformat()
+                                if 'inverted' not in temporal_filter[index]:
+                                    inverted_temporal_filter = False
+                                else:
+                                    if temporal_filter[index]['inverted']:
+                                        inverted_temporal_filter = True
+                                    else:
+                                        inverted_temporal_filter = False
+
+                                term_paths.append({
+                                    'term': {
+                                        'date_operator': date_operator,
+                                        'date_value': date_value,
+                                        'type': 'date',
+                                        'inverted': inverted_temporal_filter
+                                    },
+                                    'path': term_path
+                                })
+
+                    # combine the traced path to build a nested query
+                    group_query = nested_query_from_pathed_values(term_paths, 'nested_entity.child_entities')
+
+
+                    # add nested query to overall query
+                    selectbox_boolfilter.should(group_query)
                 
                 # logging.warning("BOX QUERY - %s", JSONSerializer().serialize(selectbox_boolfilter, indent=2))
 
