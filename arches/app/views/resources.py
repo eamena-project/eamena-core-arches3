@@ -34,6 +34,7 @@ from django.http import HttpResponseNotFound
 from django.contrib.gis.geos import GEOSGeometry
 from django.db.models import Max, Min
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.urlresolvers import reverse
 
 
 def report(request, resourceid):
@@ -75,6 +76,10 @@ def resource_manager(request, resourcetypeid='', form_id='default', resourceid='
             resource.save(user=request.user)
             resource.index()
             resourceid = resource.entityid
+
+            if request.is_ajax():
+                return JSONResponse({"url": reverse('resource_manager', kwargs={
+                    'resourcetypeid': resourcetypeid, 'form_id': form_id,'resourceid': resourceid})})
 
             return redirect('resource_manager', resourcetypeid=resourcetypeid, form_id=form_id, resourceid=resourceid)
 
