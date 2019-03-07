@@ -17,15 +17,16 @@ from arches.management.commands import utils
 from datetime import datetime
 
 
-def index_db():
+def index_db(concepts=True, resources=True):
     """
     Deletes any existing indicies from elasticsearch and then indexes all
     concepts and resources from the database
 
     """
-
-    index_concepts()
-    index_resources()
+    if concepts:
+        index_concepts()
+    if resources:
+        index_resources()
 
 def index_resources():
     """
