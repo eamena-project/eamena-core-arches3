@@ -39,7 +39,12 @@ define(['jquery',
                     data: this.data,
                     dataKey: 'RIGHT.E30', 
                     validateBranch: function (nodes) {
-                        var ck0 = this.validateHasValues(nodes);
+                        var canBeEmpty = [
+                            'DESIGNATION_TYPE.E55',
+                            'DESIGNATION_FROM_DATE.E61',
+                            'DESIGNATION_TO_DATE.E61',
+                        ];
+                        var ck0 = this.validateHasValues(nodes, canBeEmpty);
                         var ck1 = vt.isValidDate(nodes, 'DESIGNATION_FROM_DATE.E61');
                         var ck2 = vt.isValidDate(nodes, 'DESIGNATION_TO_DATE.E61');
                         return ck0 && ck1 && ck2; 
