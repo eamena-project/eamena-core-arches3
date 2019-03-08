@@ -118,8 +118,8 @@ class Command(BaseCommand):
         invalid_nodes_in_lookup = [i for i in lookups.keys() if not i in all_node_names]
         
         if len(invalid_nodes_in_lookup) > 0:
-            print len(invalid_nodes_in_lookup), "nodes in your lookup file are"\
-                "not valid node names. (Disregard this message if your resource)"\
+            print len(invalid_nodes_in_lookup), "nodes in your lookup file are "\
+                "not valid node names.\n(Disregard this message if your resource "\
                 "graphs have not been loaded yet.)"
     
         nodes_not_in_lookup = [i for i in all_node_names if not i in lookups]
@@ -178,11 +178,10 @@ class Command(BaseCommand):
 
             if name in lookups:
                 
-                try:
-                    tc = topconcepts[lookups[name]]
-                except Exception as e:
-                    print e
-                    continue
+                tcname = lookups[name]
+                if not tcname in topconcepts:
+                     continue
+                tc = topconcepts[tcname]
                 for sc in tc.subconcepts:
                     newrelation = ConceptRelations(
                         relationid = uuid.uuid4(),
@@ -194,14 +193,15 @@ class Command(BaseCommand):
             else:
                 missing_n.append(name)
 
-        # print a summary of the missing linkages
-        missing_n.sort()
-        print "these nodes have no dropdown contents associated with them:"
-        for i in missing_n:
-            print " ",i
-        missing_tc.sort()
-        print "these top concepts are not associated with any nodes:"
-        for i in missing_tc:
-            print " ", i
+        # print summaries of the missing linkages
+        if len(missing_n) > 0:
+            missing_n.sort()
+            print "NODES WITH NO ASSOCIATED DROPDOWNS:"
+            for i in missing_n:
+                print " ",i
 
-        print "DONE"
+        if len(missing_tc) > 0:
+            missing_tc.sort()
+            print "TOP CONCEPTS NOT ASSOCIATED WITH ANY NODE:"
+            for i in missing_tc:
+                print " ", i
