@@ -60,5 +60,5 @@ def truncate_resources():
     """Deletes ALL resources in your database. Use with caution!"""
     cursor = connection.cursor()
     cursor.execute("""TRUNCATE data.entities CASCADE;""" )
-    index_database.index_db()
+    index_database.index_db(concepts=False)
     print 'Resources Truncated'
