@@ -436,6 +436,7 @@ class Command(BaseCommand):
             print "removing all resources from database..."
             resource_remover.truncate_resources()
             print "    done."
+            exit()
 
         if load_id is not None:
             resources = resource_remover.get_resourceids_from_edit_log(load_id=load_id)
