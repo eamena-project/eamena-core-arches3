@@ -75,7 +75,7 @@ class CsvWriter(Writer):
         csvwriter.writeheader()
         csvs_for_export.append({'name':csv_name, 'outputfile': dest})
         for csv_record in csv_records:
-            csvwriter.writerow({k:v.encode('utf8') for k,v in csv_record.items()})
+            csvwriter.writerow({k:v.encode('utf-8') for k,v in csv_record.items()})
         return csvs_for_export
         
 
