@@ -5,3 +5,4 @@ livereload
 webtest
 django-webtest
 sst
+django-rosetta==0.7.1
