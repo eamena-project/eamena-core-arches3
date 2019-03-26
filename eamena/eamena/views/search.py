@@ -21,6 +21,7 @@ from django.conf import settings
 from django.template import RequestContext
 from django.shortcuts import render_to_response
 from django.db.models import Max, Min
+from django.contrib.auth.decorators import login_required, user_passes_test
 from arches.app.models import models
 from arches.app.views.search import get_paginator
 from arches.app.views.search import build_search_results_dsl as build_base_search_results_dsl
@@ -41,7 +42,8 @@ try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
-    
+
+@user_passes_test(lambda u: u.groups.filter(name='read').count() != 0, login_url='/auth/')
 def home_page(request):
     lang = request.GET.get('lang', settings.LANGUAGE_CODE)
     min_max_dates = models.Dates.objects.aggregate(Min('val'), Max('val'))
@@ -77,6 +79,7 @@ def get_related_resource_ids(resourceids, lang, limit=1000, start=0):
     
     return entityids
 
+@user_passes_test(lambda u: u.groups.filter(name='read').count() != 0, login_url='/auth/')
 def search_results(request):
 
     lang = request.GET.get('lang', request.LANGUAGE_CODE)
