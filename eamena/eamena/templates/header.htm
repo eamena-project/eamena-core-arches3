@@ -119,7 +119,7 @@
                     <!-- End Resource Editor -->
                     {% endif %}
 
-                    {% if 'edit' in user.user_groups %}
+                    {% if 'editplus' in user.user_groups %}
                      <!-- RDM-->
                     <li class="{% if user.is_anonymous %}{% endif %} {% if active_page = 'RDM' %}active{% endif %}">
                         <a href="{% url 'rdm' '' %}">
