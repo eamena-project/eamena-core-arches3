@@ -125,7 +125,7 @@ class Entity(object):
         
     def create_uniqueids(self, entitytype, is_new_resource = False):  # Method that creates UniqueIDs and its correlated Entity when a new resource is saved, or else only a UniqueId when the entity is already present (this will happen if the entities are created via importer.py
 
-        uniqueid_node = settings.RESOURCE_TYPE_CONFIGS()[self.entitytypeid]['primary_name_lookup']['entity_type']
+        uniqueid_node = settings.RESOURCE_TYPE_CONFIGS()[self.get_root().entitytypeid]['primary_name_lookup']['entity_type']
         if entitytype in settings.EAMENA_RESOURCES:
           type = settings.EAMENA_RESOURCES[entitytype]
         else:
