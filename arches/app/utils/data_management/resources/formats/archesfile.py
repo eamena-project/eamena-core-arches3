@@ -298,6 +298,8 @@ class ArchesReader():
             if break_on_error:
                 sys.exit(101)
 
+        return sorted_errors
+
     def load_file(self, arches_file):
         '''Reads an arches data file and creates resource graphs'''
         resource_list = []
