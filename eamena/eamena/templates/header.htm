@@ -85,6 +85,7 @@
                     </li>
                     <!-- End Home -->
 
+                    {% if 'read' in user.user_groups %}
                     <!-- New Search-->
                     <li class="{% if active_page = 'Search' %}active{% endif %}">
                         <a href="{% url 'search_home' %}">
@@ -100,6 +101,7 @@
                         </a>
                     </li>
                     <!-- End Map-->
+                    {% endif %}
 
                     {% if 'edit' in user.user_groups %}
                     <!-- Resource Editor-->
@@ -115,7 +117,9 @@
                         </ul>
                     </li>
                     <!-- End Resource Editor -->
+                    {% endif %}
 
+                    {% if 'edit' in user.user_groups %}
                      <!-- RDM-->
                     <li class="{% if user.is_anonymous %}{% endif %} {% if active_page = 'RDM' %}active{% endif %}">
                         <a href="{% url 'rdm' '' %}">

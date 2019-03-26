@@ -36,15 +36,13 @@ from arches.app.utils.encrypt import Crypter
 from arches.app.utils.spatialutils import getdates
 from arches.app.utils.eamena_utils import validatedates
 from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required, user_passes_test
 
 import logging
 
+@user_passes_test(lambda u: u.groups.filter(name='read').count() != 0, login_url='/auth/')
 def report(request, resourceid):
     logging.warning("Viewing Report. User=%s", request.user)
-
-    # Redirect non-logged-in users to the login screen
-    if request.user.is_anonymous:
-	redirect('/auth')
 
     lang = request.GET.get('lang', request.LANGUAGE_CODE)
     page = request.GET.get('page', 1)
