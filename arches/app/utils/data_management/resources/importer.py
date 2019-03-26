@@ -178,7 +178,24 @@ class ResourceLoader(object):
                 master_graph = mapping_graph
             else:
                 node_type_to_merge_at = schema[row.attributename]['mergenodeid']
-                master_graph.merge_at(mapping_graph, node_type_to_merge_at)
+                has_merge_in_path = 0
+                new_merge_node = None
+                for ent in entity_data2:
+                    for step in ent.flatten():
+                        if step.entitytypeid == node_type_to_merge_at:
+                            has_merge_in_path += 1
+                            break
+                for ent in mapping_graph.flatten():
+                    if ent.entitytypeid == node_type_to_merge_at and ent.value != '':
+                        new_merge_node = schema[node_type_to_merge_at]['mergenodeid']
+                if has_merge_in_path != len(entity_data2):
+                    # Merge node is not in path of each node - so will merge in at root.
+                    master_graph.merge_at(mapping_graph, mapping_graph.entitytypeid)
+                elif new_merge_node:
+                    # Merge node is a value node - so will merge one node up
+                    master_graph.merge_at(mapping_graph, new_merge_node)
+                else:
+                    master_graph.merge_at(mapping_graph, node_type_to_merge_at)
         return master_graph
 
     def pre_save(self, master_graph):
