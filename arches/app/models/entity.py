@@ -180,14 +180,20 @@ class Entity(object):
         entity.entityid = self.entityid
         entity.save()
         if is_new_resource:
-          newid = self.create_uniqueids(str(entitytype), is_new_resource)
-          self.append_child(Entity().get(newid, archesmodels.Entities.objects.get(pk = entity.entityid)))
+            contains_eamena_id = False
+            for child in self.child_entities:
+                if child.entitytypeid == 'EAMENA_ID.E42':
+                    contains_eamena_id = True
+            if not contains_eamena_id:
+                newid = self.create_uniqueids(str(entitytype), is_new_resource)
+                self.append_child(Entity().get(newid, archesmodels.Entities.objects.get(pk = entity.entityid)))
         else:
-          if str(entitytype) == 'EAMENA_ID.E42':
-            try:
-              archesmodels.UniqueIds.objects.get(pk=self.entityid)
-            except ObjectDoesNotExist:
-              self.create_uniqueids(str(entitytype), is_new_resource=False)
+            if str(entitytype) == 'EAMENA_ID.E42':
+                try:
+                    archesmodels.UniqueIds.objects.get(pk=self.entityid)
+                except ObjectDoesNotExist:
+                    self.create_uniqueids(self.get_root().entitytypeid, is_new_resource=False)
+                    is_new_entity = False
 
                                      
         columnname = entity.entitytypeid.getcolumnname()

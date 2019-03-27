@@ -157,7 +157,7 @@ class Validator(object):
         resource_type = row['RESOURCETYPE']
         business_table = self.get_businesstable(resource_type, entity_type)
 
-        if business_table not in ['strings', 'dates', 'domains', 'files', 'geometries', 'numbers']:
+        if business_table not in ['strings', 'dates', 'domains', 'files', 'geometries', 'numbers', 'uniqueids']:
             self.append_error('{0} is not a valid business table name for {1}.'.format(business_table, row['ATTRIBUTENAME']), 'businesstable_error')
         else:
             if business_table == 'domains':
