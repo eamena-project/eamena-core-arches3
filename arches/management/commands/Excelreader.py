@@ -10,6 +10,7 @@ from django.core.management.base import BaseCommand, CommandError
 from openpyxl import load_workbook
 import arches.app.models.models as archesmodels
 from arches.management.commands import utils
+from arches.app.utils.data_management.resources.formats.archesfile import ArchesReader
 from django.contrib.gis.geos import GEOSGeometry
 from arches.app.models.entity import Entity
 
@@ -529,6 +530,11 @@ class Command(BaseCommand):
         with open(relationsfile, 'wb') as rel:
             writer = csv.writer(rel, delimiter ="|")
             writer.writerow(['RESOURCEID_FROM','RESOURCEID_TO','START_DATE','END_DATE','RELATION_TYPE','NOTES'])
+
+        arches_errors = ArchesReader().validate_file(destination,break_on_error=False)
+        for ae in arches_errors:
+            result['success'] = False
+            result['errors'].append(".arches file validation error: "+ae)
 
         return result
 

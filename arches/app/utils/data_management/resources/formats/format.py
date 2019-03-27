@@ -162,6 +162,16 @@ class Writer(object):
                 if geom.geom_typeid == 6:
                     for feat in geom:
                         sorted_geoms['polys'].append(feat)
+                # process a geometry collection by iterating and further
+                # sorting its pieces
+                if geom.geom_typeid == 7:
+                    for g in geom:
+                        if g.geom_typeid == 0:
+                            sorted_geoms['points'].append(g)
+                        if g.geom_typeid == 1:
+                            sorted_geoms['lines'].append(g)
+                        if g.geom_typeid == 3:
+                            sorted_geoms['polys'].append(g)
             if len(sorted_geoms['points']) > 0:
                 result.append({'type':'Feature','geometry': MultiPoint(sorted_geoms['points']),'properties': properties})
             if len(sorted_geoms['lines']) > 0:
