@@ -129,7 +129,19 @@ class Writer(object):
             geom = GEOSGeometry(JSONSerializer().serialize(g['value'], ensure_ascii=False))
             geoms.append(geom)
         if geo_process=='collection':
-            geometry = GeometryCollection(geoms)
+            
+            ## need to iterate the list and double-iterate any geom collections
+            ## to make a new list of only simple geometries, which is, in turn,
+            ## transformed back into a collection.
+            newgeomlist = list()
+            for g in geoms:
+                if g.geom_typeid == 7:
+                    for gchild in g:
+                        newgeomlist.append(gchild)
+                else:
+                    newgeomlist.append(g)
+                    
+            geometry = GeometryCollection(newgeomlist)
             result = {'type':'Feature','geometry': geometry,'properties': properties}
         elif geo_process == 'sorted':
             result = []
