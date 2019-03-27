@@ -12,6 +12,7 @@ import arches.app.models.models as archesmodels
 from arches.management.commands import utils
 from django.contrib.gis.geos import GEOSGeometry
 from arches.app.models.entity import Entity
+from arches.app.models.models import UniqueIds
 
 class Command(BaseCommand):
     
@@ -72,6 +73,11 @@ class Command(BaseCommand):
                     data = self.get_values_for_validation(workbook,datatype="files")
                     values = self.flatten_values(data)
                     result, filelist = self.validate_files(values)
+
+                elif vtype == 'uniqueids':
+                    data = self.get_values_for_validation(workbook, datatype='uniqueids')
+                    values = self.flatten_values(data)
+                    result = self.validate_uniqueids(values, options['res_type'])
                     
                 elif vtype == 'write_arches_file':
                     result = self.write_arches_file(
@@ -343,6 +349,26 @@ class Command(BaseCommand):
         if result['errors']:
             result['success'] = False
         return result, filelist
+
+    def validate_uniqueids(self, data, resource_type):
+        """
+        Going to validate that the unique ids are truly unique
+        """
+        result = {'success': True, 'errors': []}
+        for row in data:
+            eamena_id = row[0]
+            if resource_type in settings.EAMENA_RESOURCES:
+                id_type = settings.EAMENA_RESOURCES[resource_type]
+            else:
+                id_type = resource_type.split('_')[0]
+            num = int(eamena_id[len(id_type) + 1:])
+            found = UniqueIds.objects.filter(id_type=id_type, val=num)
+            if len(found) > 0:
+                result['errors'].append("The unique ID at header {}, line {} already exists within the database.".format(row[2], row[3]))
+
+        if result['errors']:
+            result['success'] = False
+        return result
 
     def create_resourceid_list(self, workbook):
         ''''Looks for RESOURCEID column and creates a list of resourceids and returns '''
