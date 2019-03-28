@@ -13,6 +13,7 @@ from arches.app.models.resource import Resource
 from arches.app.models.models import Concepts
 from arches.app.models.models import Values
 from arches.app.models.models import RelatedResource
+from arches.app.models.models import Entities, UniqueIds
 from arches.app.models.concept import Concept
 from arches.app.search.search_engine_factory import SearchEngineFactory
 from arches.management.commands import utils
@@ -54,6 +55,8 @@ class ResourceLoader(object):
         elif file_format == '.json':
             archesjson = True
             reader = JsonReader()
+            print '\nVALIDATING JSON FILE ({0})'.format(source)
+            reader.validate_file(source)
 
         start = time()
         resources = reader.load_file(source)
