@@ -10,6 +10,8 @@ import sys
 import os
 from arches.management.commands import utils
 import time
+from arches.app.models.models import UniqueIds
+
 
 class Row(object):
     def __init__(self, *args):
@@ -77,6 +79,7 @@ class Validation_Errors(object):
         self.number_errors = []
         self.contiguousness_errors = []
         self.relations_errors = []
+        self.uniqueid_errors = []
 
 class Validator(object):
     def __init__(self, *args):
@@ -176,6 +179,9 @@ class Validator(object):
             elif business_table == 'numbers':
                 self.validate_numbers(row, rownum)
 
+            elif business_table == 'uniqueids':
+                self.validate_uniqueids(row, rownum)
+
 
     def validate_domains(self, row, rownum):
         if row['ATTRIBUTEVALUE'] not in self.domain_values:
@@ -226,6 +232,20 @@ class Validator(object):
                 pass
         else:
             self.append_error('ERROR ROW: {0} - {1} file either does not exist at location or is not readable.'.format(rownum, row['ATTRIBUTEVALUE']), 'filepath_errors')
+
+    def validate_uniqueids(self, row, rownum):
+        """
+        This method will check that the unique ids included do not already exist in the database.
+        """
+        if row['RESOURCETYPE'] in settings.EAMENA_RESOURCES:
+            id_type = settings.EAMENA_RESOURCES[row['RESOURCETYPE']]
+        else:
+            id_type = row['RESOURCETYPE'].split('_')[0]
+        num = int(row['ATTRIBUTEVALUE'][len(id_type) + 1:])
+        found = UniqueIds.objects.filter(val=num, id_type=id_type)
+        if len(found) > 0:
+            self.append_error(
+                'ERROR ROW: {0} - {1} is a pre-existing unique ID.'.format(rownum, row['ATTRIBUTEVALUE']), 'uniqueid_errors')
 
     def validate_relations_file(self, arches_file):
         unique_relationids = set()
