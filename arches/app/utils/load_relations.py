@@ -4,6 +4,8 @@ from arches.app.models.resource import Resource
 from arches.app.search.search_engine_factory import SearchEngineFactory
 from arches.app.models.models import RelatedResource
 from arches.app.search.elasticsearch_dsl_builder import Query, Terms
+from django.conf import settings
+import datetime
 
 def LoadRelations(source):
     """
@@ -11,14 +13,30 @@ def LoadRelations(source):
     
     AZ 14/12/16
     """
+    d = datetime.datetime.now()
+    load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day, d.hour, d.minute, d.microsecond)
 
+    ret = {'load_id': load_id, 'errors': []}
+
+    nrelations = 0
     with open(source, 'rb') as csvfile:
         reader = csv.DictReader(csvfile, delimiter= ',')
         for row in reader:
+            nrelations += 1
             try:
                 ResourceLoader().relate_resources(row, legacyid_to_entityid = None, archesjson = True)
             except:
-                print "Issue with entity1 %s and entity2 %s" %(row['RESOURCEID_FROM'], row['RESOURCEID_TO'])
+                error = "Issue with entity1 %s and entity2 %s" % (row['RESOURCEID_FROM'], row['RESOURCEID_TO'])
+                print error
+                ret['errors'].append(error)
+
+    log_msg = "\n~~~~~\n{}\nfile: {}\nrelations: {}\nloadid: {}".format(
+        d.strftime("%d/%m/%Y - %H:%M"), source.split('/')[-1], nrelations, load_id
+    )
+    with open(settings.BULK_UPLOAD_LOG_FILE, "a") as loadlog:
+        loadlog.write(log_msg)
+
+    return ret
                 
                 
 def get_related_resources(resourceid, lang='en-US', limit=1000, start=0):
