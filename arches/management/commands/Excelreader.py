@@ -4,6 +4,7 @@ import csv
 import json
 import datetime
 import string
+import uuid
 from django.conf import settings
 from optparse import make_option
 from django.core.management.base import BaseCommand, CommandError 
@@ -472,11 +473,18 @@ class Command(BaseCommand):
 
     def get_existing_resource(self, eamena_id):
         '''From EAMENA_ID return the resource entityid'''
-        id_type = eamena_id[:-settings.ID_LENGTH-1]
-        num = int(eamena_id.split('-')[-1])
-        uniqueid = archesmodels.UniqueIds.objects.get(id_type=id_type, val=num)
-        parent = archesmodels.Relations.objects.get(entityidrange=uniqueid.entityid_id)
-        return parent.entityiddomain.entityid
+
+        try:
+            uuid.UUID(eamena_id)
+        except ValueError:
+            id_type = eamena_id[:-settings.ID_LENGTH-1]
+            num = int(eamena_id.split('-')[-1])
+            uniqueid = archesmodels.UniqueIds.objects.get(id_type=id_type, val=num)
+            parent = archesmodels.Relations.objects.get(entityidrange=uniqueid.entityid_id)
+            return parent.entityiddomain.entityid
+        else:
+            archesmodels.Entities.objects.get(entityid=eamena_id, entitytypeid__isresource=True)
+            return eamena_id
 
     def write_arches_file(self,workbook,resourcetype,destination,append=False):
         '''trimmed down version of SiteDataset, removing all validation operations.
