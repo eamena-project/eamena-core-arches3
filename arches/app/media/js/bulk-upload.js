@@ -287,6 +287,7 @@ $( document ).ready(function() {
             data: {
                 'filepath':archesFilepath,
                 'append':$('#append-select').val(),
+                'restype': $('#resource-type-select').val()
             },
             success: function(result) {
                 if (result.errors) {

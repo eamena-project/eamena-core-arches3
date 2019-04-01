@@ -491,8 +491,10 @@ class Command(BaseCommand):
     def legacy_fixer(self, source):
         LegacyIdsFixer(source)
 
-    def load_relations(self, source):
-        LoadRelations(source)
+    def load_relations(self, source, run_internal=False):
+        results = LoadRelations(source)
+        if run_internal:
+            self.stdout.write(json.dumps(results))
         
     def unload_relations(self, source):
         UnloadRelations(source)
