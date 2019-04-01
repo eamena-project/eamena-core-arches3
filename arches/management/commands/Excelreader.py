@@ -452,32 +452,22 @@ class Command(BaseCommand):
 
         return result
         
-    def get_label_lookup(self,node_name):
+    def get_label_lookup(self, node_name, return_entity=False):
         
         node_obj = archesmodels.EntityTypes.objects.get(pk=node_name)
         all_concepts = self.collect_concepts(node_obj.conceptid_id,full_concept_list=[])
 
-        ## dictionary will hold {label:concept.legacyoid}
+        ## dictionary will hold {label:concept.legacyoid} or {label:valueid}
         label_lookup = {}
         for c in all_concepts:
             cobj = archesmodels.Concepts.objects.get(pk=c)
             labels = archesmodels.Values.objects.filter(conceptid_id=c,valuetype_id="prefLabel")
             for label in labels:
-                label_lookup[label.value.lower()] = cobj.legacyoid
+                if return_entity:
+                    label_lookup[label.value.lower()] = label.valueid
+                else:
+                    label_lookup[label.value.lower()] = cobj.legacyoid
                 
-        return label_lookup
-
-    def get_label_entityids(self, node_name):
-        node_obj = archesmodels.EntityTypes.objects.get(pk=node_name)
-        all_concepts = self.collect_concepts(node_obj.conceptid_id, full_concept_list=[])
-
-        ## dictionary will hold {label:label.entityid}
-        label_lookup = {}
-        for c in all_concepts:
-            labels = archesmodels.Values.objects.filter(conceptid_id=c, valuetype_id="prefLabel")
-            for label in labels:
-                label_lookup[label.value.lower()] = label.valueid
-
         return label_lookup
 
     def get_existing_resource(self, eamena_id):
@@ -523,9 +513,7 @@ class Command(BaseCommand):
                     entitytype = node_obj.entitytypeid
                     datatype = node_obj.businesstablename
 
-                    label_lookup = self.get_label_lookup(node_name)
-                    if resourcetype == 'relations' and sheet_name == 'RELATIONS':
-                        label_lookup = self.get_label_entityids(node_name)
+                    label_lookup = self.get_label_lookup(node_name, return_entity=(resourcetype == 'relations' and sheet_name == 'RELATIONS'))
 
                 for row_index, row in enumerate(sheet.iter_rows(row_offset = 1)):
 
