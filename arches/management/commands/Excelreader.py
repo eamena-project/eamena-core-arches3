@@ -620,6 +620,10 @@ class Command(BaseCommand):
                     writer.writerow(line)
 
         if resourcetype != 'relations':
+            if len(ResourceList) == 0:
+                result['success'] = False
+                result['errors'].append("No '%s' resources found to upload." % resourcetype)
+
             with open(destination, 'wb') as archesfile:
                 writer = csv.writer(archesfile, delimiter ="|")
                 writer.writerow(['RESOURCEID', 'RESOURCETYPE', 'ATTRIBUTENAME', 'ATTRIBUTEVALUE', 'GROUPID'])
