@@ -4,6 +4,7 @@ import csv
 import json
 import datetime
 import string
+import uuid
 from django.conf import settings
 from optparse import make_option
 from django.core.management.base import BaseCommand, CommandError 
@@ -12,6 +13,9 @@ import arches.app.models.models as archesmodels
 from arches.management.commands import utils
 from django.contrib.gis.geos import GEOSGeometry
 from arches.app.models.entity import Entity
+from django.core.exceptions import ObjectDoesNotExist
+
+RELATION_HEADER = ['RESOURCEID_FROM', 'RESOURCEID_TO', 'START_DATE', 'END_DATE', 'RELATION_TYPE', 'NOTES']
 
 class Command(BaseCommand):
     
@@ -217,6 +221,9 @@ class Command(BaseCommand):
                 # don't analyze values that are in columns without headers
                 # (this is to control for situations where excel adds extra
                 # empty columns somehow)
+                if sheet_name == 'RELATIONS' and headers[col] == 'RESOURCEID_FROM':
+                    continue
+
                 if col+1 > num_cols:
                     continue
                 if cell.value is not None:
@@ -232,12 +239,16 @@ class Command(BaseCommand):
         return msgs
 
     def validate_headers(self, workbook, skip_resourceid_col = False, resource_type=None):
-    
-        q = Entity().get_mapping_schema(resource_type)
-        restypenodes = set(q.keys())
+
+        if resource_type != 'relations':
+            q = Entity().get_mapping_schema(resource_type)
         
         result = {'success':True,'errors':[]}
         for sheet in workbook.worksheets:
+            if sheet.title == 'RELATIONS':
+                restypenodes = RELATION_HEADER
+            else:
+                restypenodes = set(q.keys())
             for header in sheet.iter_cols(max_row = 1):
                 nodename = header[0].value
                 if nodename is not None:
@@ -258,6 +269,9 @@ class Command(BaseCommand):
         for sheet_name,contents in concept_data.iteritems():
 
             for node_name, concept_tuples in contents.iteritems():
+
+                if sheet_name == 'RELATIONS' and node_name == 'RELATION_TYPE':
+                    node_name = 'ARCHES_RESOURCE_CROSS-REFERENCE_RELATIONSHIP_TYPES.E55'
 
                 label_lookup = self.get_label_lookup(node_name)
                 for ct in concept_tuples:
@@ -370,8 +384,17 @@ class Command(BaseCommand):
                 node_names.append(node_name)
         lookup = {}
         for name in node_names:
-            obj = archesmodels.EntityTypes.objects.get(pk=name)
-            lookup[name] = obj.businesstablename
+            try:
+                obj = archesmodels.EntityTypes.objects.get(pk=name)
+                lookup[name] = obj.businesstablename
+            except ObjectDoesNotExist:
+                if name in RELATION_HEADER:
+                    if 'DATE' in name:
+                        lookup[name] = 'dates'
+                    elif name == 'RELATION_TYPE':
+                        lookup[name] = 'domains'
+                    else:
+                        lookup[name] = 'strings'
         return lookup
         
     def flatten_values(self,data):
@@ -430,27 +453,46 @@ class Command(BaseCommand):
 
         return result
         
-    def get_label_lookup(self,node_name):
+    def get_label_lookup(self, node_name, return_entity=False):
         
         node_obj = archesmodels.EntityTypes.objects.get(pk=node_name)
         all_concepts = self.collect_concepts(node_obj.conceptid_id,full_concept_list=[])
 
-        ## dictionary will hold {label:concept.legacyoid}
+        ## dictionary will hold {label:concept.legacyoid} or {label:valueid}
         label_lookup = {}
         for c in all_concepts:
             cobj = archesmodels.Concepts.objects.get(pk=c)
             labels = archesmodels.Values.objects.filter(conceptid_id=c,valuetype_id="prefLabel")
             for label in labels:
-                label_lookup[label.value.lower()] = cobj.legacyoid
+                if return_entity:
+                    label_lookup[label.value.lower()] = label.valueid
+                else:
+                    label_lookup[label.value.lower()] = cobj.legacyoid
                 
         return label_lookup
+
+    def get_existing_resource(self, eamena_id):
+        '''From EAMENA_ID return the resource entityid'''
+
+        try:
+            uuid.UUID(eamena_id)
+        except ValueError:
+            id_type = eamena_id[:-settings.ID_LENGTH-1]
+            num = int(eamena_id.split('-')[-1])
+            uniqueid = archesmodels.UniqueIds.objects.get(id_type=id_type, val=num)
+            parent = archesmodels.Relations.objects.get(entityidrange=uniqueid.entityid_id)
+            return parent.entityiddomain.entityid
+        else:
+            archesmodels.Entities.objects.get(entityid=eamena_id, entitytypeid__isresource=True)
+            return eamena_id
 
     def write_arches_file(self,workbook,resourcetype,destination,append=False):
         '''trimmed down version of SiteDataset, removing all validation operations.
         only produces a .arches file now.'''
         
-        result = {'success':True,'errors':[]}
+        result = {'success': True, 'errors': []}
         ResourceList = []
+        Relations = {}
 
         if append:
             resourceids_list = self.create_resourceid_list(workbook)
@@ -463,11 +505,23 @@ class Command(BaseCommand):
                 if not node_name or node_name == 'RESOURCEID':
                     continue
 
-                node_obj = archesmodels.EntityTypes.objects.get(pk=node_name)
-                entitytype = node_obj.entitytypeid
-                datatype = node_obj.businesstablename
+                if sheet_name == 'RELATIONS' and node_name == 'RELATION_TYPE':
+                    node_name = 'ARCHES_RESOURCE_CROSS-REFERENCE_RELATIONSHIP_TYPES.E55'
 
-                label_lookup = self.get_label_lookup(node_name)
+                try:
+                    node_obj = archesmodels.EntityTypes.objects.get(pk=node_name)
+                except ObjectDoesNotExist:
+                    if 'DATE' in node_name:
+                        entitytype = 'DATE'
+                        datatype = 'dates'
+                    else:
+                        entitytype = 'TEXT'
+                        datatype = 'strings'
+                else:
+                    entitytype = node_obj.entitytypeid
+                    datatype = node_obj.businesstablename
+
+                    label_lookup = self.get_label_lookup(node_name, return_entity=(resourcetype == 'relations' and sheet_name == 'RELATIONS'))
 
                 for row_index, row in enumerate(sheet.iter_rows(row_offset = 1)):
 
@@ -476,6 +530,16 @@ class Command(BaseCommand):
                         continue
 
                     resourceid = row_index if append == False else resourceids_list[row_index]
+
+                    if resourceid not in Relations:
+                        Relations[resourceid] = {
+                            'RESOURCEID_FROM': [],
+                            'RESOURCEID_TO': [],
+                            'START_DATE': [],
+                            'END_DATE': [],
+                            'RELATION_TYPE': [],
+                            'NOTES': []
+                        }
 
                     encoded = unicode(value).encode('utf-8')
                     for concept in encoded.split('|'):
@@ -505,10 +569,17 @@ class Command(BaseCommand):
                             elif "FILE_PATH" in entitytype:
                                 outval = concept.replace(" ","_")
 
+                            elif sheet_name == 'RELATIONS' and 'RESOURCEID' in node_name and '-' in concept:
+                                outval = self.get_existing_resource(concept)
+
                             else:
                                 outval = concept
-                            row = [str(resourceid),resourcetype,entitytype,outval, GroupName]
-                            ResourceList.append(row)
+
+                            if sheet_name == 'RELATIONS':
+                                Relations[resourceid][header[0].value].append(outval)
+                            else:
+                                row = [str(resourceid),resourcetype,entitytype,outval, GroupName]
+                                ResourceList.append(row)
                         
                         except Exception as e:
                             result['success'] = False
@@ -517,17 +588,52 @@ class Command(BaseCommand):
                                 concept,entitytype)
                             )
 
-        with open(destination, 'wb') as archesfile:
-            writer = csv.writer(archesfile, delimiter ="|")
-            writer.writerow(['RESOURCEID', 'RESOURCETYPE', 'ATTRIBUTENAME', 'ATTRIBUTEVALUE', 'GROUPID'])
-            ResourceList = sorted(ResourceList, key = lambda row:(row[0],row[4],row[2]), reverse = False)
-            for row in ResourceList:
-                writer.writerow(row)
-
-        ## make blank relations file
-        relationsfile = destination.replace(".arches",".relations")
+        ## make relations file
+        relationsfile = destination.replace(".arches", ".relations")
         with open(relationsfile, 'wb') as rel:
-            writer = csv.writer(rel, delimiter ="|")
-            writer.writerow(['RESOURCEID_FROM','RESOURCEID_TO','START_DATE','END_DATE','RELATION_TYPE','NOTES'])
+            if resourcetype == 'relations':
+                writer = csv.writer(rel, delimiter=',')
+            else:
+                writer = csv.writer(rel, delimiter="|")
+            writer.writerow(RELATION_HEADER)
+            for resid in Relations:
+                for i, val in enumerate(Relations[resid]['RESOURCEID_TO']):
+                    reltype = Relations[resid]['RELATION_TYPE'][i]
+                    fromid = resid
+                    toid = val
+                    if len(Relations[resid]['RESOURCEID_FROM']) > 0:
+                        fromid = Relations[resid]['RESOURCEID_FROM'][0]
+                    if '-' not in toid:
+                        toid = int(val) - 2  # remove one for header line and one for index number
+                    try:
+                        startdate = Relations[resid]['START_DATE'][i]
+                        enddate = Relations[resid]['END_DATE'][i]
+                    except IndexError:
+                        startdate = None
+                        enddate = None
+                    try:
+                        notes = Relations[resid]['NOTES'][i]
+                    except IndexError:
+                        notes = ''
+                    line = [fromid, toid, startdate, enddate, reltype, notes]
+                    writer.writerow(line)
+
+        if resourcetype != 'relations':
+            if len(ResourceList) == 0:
+                result['success'] = False
+                result['errors'].append("No '%s' resources found to upload." % resourcetype)
+
+            with open(destination, 'wb') as archesfile:
+                writer = csv.writer(archesfile, delimiter ="|")
+                writer.writerow(['RESOURCEID', 'RESOURCETYPE', 'ATTRIBUTENAME', 'ATTRIBUTEVALUE', 'GROUPID'])
+                ResourceList = sorted(ResourceList, key = lambda row:(row[0],row[4],row[2]), reverse = False)
+                for row in ResourceList:
+                    writer.writerow(row)
+
+            arches_errors = ArchesReader().validate_file(destination,break_on_error=False)
+            for ae in arches_errors:
+                result['success'] = False
+                result['errors'].append(".arches file validation error: "+ae)
 
         return result
+

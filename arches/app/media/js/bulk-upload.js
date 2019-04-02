@@ -84,7 +84,7 @@ $( document ).ready(function() {
             if (!data.result.filevalid) {
                 // note that invalid file types will not have been uploaded
                 $('#files-msg').css("color","red");
-                $('#files-msg').text("Invalid file format rejected for upload.");
+                $('#files-msg').text("Invalid file format - rejected for upload.");
             } else {
                 filePath = data.result.filepath;
                 $('#files-msg').css("color","green");
@@ -287,6 +287,7 @@ $( document ).ready(function() {
             data: {
                 'filepath':archesFilepath,
                 'append':$('#append-select').val(),
+                'restype': $('#resource-type-select').val()
             },
             success: function(result) {
                 if (result.errors) {

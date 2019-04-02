@@ -107,6 +107,9 @@ def validate(request):
         data = readjson.read()
         result = json.loads(data)
 
+    if restype == 'relations':
+        destpath = destpath.replace('.arches', '.relations')
+
     if not result['success']:
         os.remove(fullpath)
 
@@ -148,16 +151,26 @@ def import_archesfile(request):
     fpath = request.POST.get('filepath','')
     fullpath = os.path.join(settings.BULK_UPLOAD_DIR,fpath)
     append = request.POST.get('append', 'false')
+    restype = request.POST.get('restype', '')
 
     output = StringIO()
     try:
-        call_command('packages',
-            operation='load_resources',
-            source=fullpath,
-            appending=append,
-            run_internal=True,
-            stdout = output,
-        )
+        if restype == 'relations':
+            call_command('packages',
+                         operation='load_relations',
+                         source=fullpath,
+                         appending=append,
+                         run_internal=True,
+                         stdout=output,
+                         )
+        else:
+            call_command('packages',
+                         operation='load_resources',
+                         source=fullpath,
+                         appending=append,
+                         run_internal=True,
+                         stdout=output,
+                         )
     except Exception as e:
         print e
 
