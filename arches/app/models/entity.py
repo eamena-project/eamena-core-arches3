@@ -144,14 +144,19 @@ class Entity(object):
         uniqueidmodelinstance = uniqueidmodel()
         uniqueidmodelinstance.entityid = entity2 if is_new_resource else archesmodels.Entities.objects.get(pk=self.entityid)
         uniqueidmodelinstance.id_type = type
-        
-        try:
-          lastID = archesmodels.UniqueIds.objects.filter(id_type__exact=type).latest()
-          IdInt = int(lastID.val) + 1
-          uniqueidmodelinstance.val = str(IdInt)
-            
-        except ObjectDoesNotExist:
-          uniqueidmodelinstance.val = str(1)
+
+        if self.value:
+            # Setting ID to value already defined
+            num = int(self.value[-settings.ID_LENGTH:])
+            uniqueidmodelinstance.val = str(num)
+        else:
+            try:
+                lastID = archesmodels.UniqueIds.objects.filter(id_type__exact=type).latest('val')
+                IdInt = int(lastID.val) + 1
+                uniqueidmodelinstance.val = str(IdInt)
+
+            except ObjectDoesNotExist:
+                uniqueidmodelinstance.val = str(1)
                 
         uniqueidmodelinstance.order_date = datetime.datetime.now()
         uniqueidmodelinstance.save()
@@ -188,7 +193,7 @@ class Entity(object):
                 newid = self.create_uniqueids(str(entitytype), is_new_resource)
                 self.append_child(Entity().get(newid, archesmodels.Entities.objects.get(pk = entity.entityid)))
         else:
-            if str(entitytype) == 'EAMENA_ID.E42':
+            if str(entitytype) == 'EAMENA_ID.E42' or str(entitytype) == 'HERITAGE_COMPONENT_ID.E42':
                 try:
                     archesmodels.UniqueIds.objects.get(pk=self.entityid)
                 except ObjectDoesNotExist:
