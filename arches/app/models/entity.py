@@ -193,7 +193,7 @@ class Entity(object):
                 newid = self.create_uniqueids(str(entitytype), is_new_resource)
                 self.append_child(Entity().get(newid, archesmodels.Entities.objects.get(pk = entity.entityid)))
         else:
-            if str(entitytype) == 'EAMENA_ID.E42' or str(entitytype) == 'HERITAGE_COMPONENT_ID.E42':
+            if entity.entitytypeid.businesstablename == 'uniqueids':
                 try:
                     archesmodels.UniqueIds.objects.get(pk=self.entityid)
                 except ObjectDoesNotExist:
