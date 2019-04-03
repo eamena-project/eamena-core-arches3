@@ -186,26 +186,31 @@ def upload_attachments(request):
     """
 
     response_data = {
-        'foldervalid': True,
+        'success': True,
+        'errors': []
     }
 
     if request.method == 'POST':
         resdict = json.loads(request.POST['resdict'])
-        f = request._files['attachments[]']
+        myfiles = {}
+        for f in request.FILES.getlist('attachments[]'):
+            filename, ext = os.path.splitext(os.path.basename(str(f)))
+            if ext == '.xlsx':
+                continue
+            myfiles[f._name.replace(" ", "_")] = f
 
-        filename, ext = os.path.splitext(os.path.basename(str(f)))
-        if ext == '.xlsx':
-            return HttpResponse(json.dumps({}), content_type="application/json")
-
+        num_updated = 0
         archesfile = request.POST['archesfile']
         archesfilepath = os.path.join(settings.BULK_UPLOAD_DIR, archesfile)
         with open(archesfilepath, 'r') as ins:
             for l in ins:
                 if 'FILE_PATH' in l:
                     data = l.split('|')
-                    if data[3] == f._name.replace(" ","_"):
+                    if data[3] in myfiles.keys():
+                        f = myfiles[data[3]]
                         if data[0] not in resdict:
-                            response_data['foldervalid'] = False
+                            response_data['success'] = False
+                            response_data['errors'].append('Unable to find resource ID information for %s. Did you load the resources?' % data[0])
                         resid = resdict[data[0]]
                         res = Resource(resid)
                         res.set_entity_value('FILE_PATH.E62', f)
@@ -213,11 +218,10 @@ def upload_attachments(request):
                         if thumb != None:
                             res.set_entity_value('THUMBNAIL.E62', thumb)
                         res.save()
-                        
-                        ## reset the file names as the paths may have been modified
-                        ## by django during the above save process
-                        res.set_entity_value('FILE_PATH.E62', str(f).replace(" ","_"))
-                        res.set_entity_value('THUMBNAIL.E62', str(thumb).replace(" ","_"))
-                        res.save()
+                        num_updated += 1
+
+        if num_updated != len(resdict.keys()):
+            response_data['success'] = False
+            response_data['errors'].append('Not all files could be found in the uploaded directory.')
 
     return HttpResponse(json.dumps(response_data), content_type="application/json")
