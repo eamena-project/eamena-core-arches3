@@ -199,7 +199,7 @@ def upload_attachments(request):
                 continue
             myfiles[f._name.replace(" ", "_")] = f
 
-        num_updated = 0
+        updated = []
         archesfile = request.POST['archesfile']
         archesfilepath = os.path.join(settings.BULK_UPLOAD_DIR, archesfile)
         with open(archesfilepath, 'r') as ins:
@@ -211,6 +211,7 @@ def upload_attachments(request):
                         if data[0] not in resdict:
                             response_data['success'] = False
                             response_data['errors'].append('Unable to find resource ID information for %s. Did you load the resources?' % data[0])
+                            continue
                         resid = resdict[data[0]]
                         res = Resource(resid)
                         res.set_entity_value('FILE_PATH.E62', f)
@@ -218,11 +219,12 @@ def upload_attachments(request):
                         if thumb != None:
                             res.set_entity_value('THUMBNAIL.E62', thumb)
                         res.save()
-                        num_updated += 1
+                        updated.append(data[0])
 
-        if num_updated != len(resdict.keys()):
+        if len(updated) != len(resdict.keys()):
             response_data['success'] = False
-            response_data['errors'].append('Not all files could be found in the uploaded directory.')
+            for resid in set(resdict.keys()) - set(updated):
+                response_data['errors'].append('Missing file for the resource on line %s.' % (int(resid)+2))
 
     return HttpResponse(json.dumps(response_data), content_type="application/json")
 

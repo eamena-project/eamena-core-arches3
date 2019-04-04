@@ -343,6 +343,8 @@ $( document ).ready(function() {
     });
 
     $('#undo-load-btn').click(function() {
+        $('#folder-msg').css("color", "orange");
+        $('#folder-msg').text("Removing resources...");
         $.ajax({
             beforeSend: function(request) {
                 request.setRequestHeader("X-CSRFToken",csrftoken);
