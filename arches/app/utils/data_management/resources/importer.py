@@ -74,7 +74,7 @@ class ResourceLoader(object):
         else:
             print 'No relationship file'
 
-        return results['legacyid_to_entityid']
+        return results
 
         #self.se.bulk_index(self.resources)
 
@@ -85,7 +85,7 @@ class ResourceLoader(object):
         d = datetime.datetime.now()
         load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day, d.hour, d.minute, d.microsecond) #Should we append the timestamp to the exported filename?
 
-        ret = {'successfully_saved':0, 'failed_to_save':[]}
+        ret = {'successfully_saved':0, 'failed_to_save':[], 'load_id': load_id}
         schema = None
         current_entitiy_type = None
         legacyid_to_entityid = {}

@@ -176,11 +176,11 @@ def import_archesfile(request):
         print e
 
     val = output.getvalue().strip()
-    return HttpResponse(json.dumps({'load_id': val}), content_type="application/json")
+    return HttpResponse(json.dumps(val), content_type="application/json")
 
 def upload_attachments(request):
     """
-    We'll enter this view for each file within the uploaded folder. So for each one we need to find which resource it
+    We'll enter this view once for the uploaded folder. For each file we need to find which resource it
     belongs to (if any) and add that entry. We're pulling a dictionary of old and new resource ids out from the load_resources
     process and using that to update and edit the file entities.
     """
@@ -223,5 +223,30 @@ def upload_attachments(request):
         if num_updated != len(resdict.keys()):
             response_data['success'] = False
             response_data['errors'].append('Not all files could be found in the uploaded directory.')
+
+    return HttpResponse(json.dumps(response_data), content_type="application/json")
+
+
+def undo_load(request):
+    """
+    This will remove the loaded resources from the database.
+    """
+
+    response_data = {
+        'success': True,
+        'errors': [],
+    }
+
+    if request.method == 'POST':
+        load_id = request.POST.get('load_id')
+        if load_id:
+            call_command('packages',
+                         operation='remove_resources',
+                         load_id=load_id,
+                         force=True
+                         )
+        else:
+            response_data['success'] = False
+            response_data['errors'].append('Load ID was not found.')
 
     return HttpResponse(json.dumps(response_data), content_type="application/json")
