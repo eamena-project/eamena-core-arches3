@@ -219,6 +219,7 @@ def upload_attachments(request):
                         if thumb != None:
                             res.set_entity_value('THUMBNAIL.E62', thumb)
                         res.save()
+                        res.index()
                         updated.append(data[0])
 
         if len(updated) != len(resdict.keys()):
