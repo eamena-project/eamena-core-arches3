@@ -43,7 +43,8 @@ def load_users(user_config_file, overwrite=False):
     with open(settings.INITIAL_USERS_CONFIG, "rb") as opencsv:
         reader = unicodecsv.DictReader(opencsv)
         for row, info in enumerate(reader):
-            for g in info['groups'].split(";"):
+            usergroups = [i for i in info['groups'].split(";") if i != ""]
+            for g in usergroups:
                 gname = g.lstrip().rstrip()
                 try:
                     gobj = Group.objects.get(name=gname)
@@ -63,7 +64,7 @@ def load_users(user_config_file, overwrite=False):
             # check if user
             username = info["username"]
             if User.objects.filter(username=username).exists() and overwrite is False:
-                print "  -- '{}' skipped: existing user will not be "\
+                print "  -- {} skipped: existing user will not be "\
                     "overwritten. Set overwrite = True if needed.".format(username)
                 continue
 
@@ -83,11 +84,12 @@ def load_users(user_config_file, overwrite=False):
             user.save()
 
             # once saved, add the user to groups as needed
-            for g in info['groups'].split(";"):
+            usergroups = [i for i in info['groups'].split(";") if i != ""]
+            for g in usergroups:
                 gname = g.lstrip().rstrip()
                 user.groups.add(gdict[gname])
 
-            print "  --",user.username
+            print "  -- {} created".format(user.username)
 
 def export_users(outfile):
 
