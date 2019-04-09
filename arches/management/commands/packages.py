@@ -39,6 +39,7 @@ import arches.app.utils.backlogids as create_backlog
 from arches.app.utils.eamena_utils import return_one_node
 from arches.app.utils.FixingMethods import LegacyIdsFixer,IndexConceptFixer
 from arches.app.utils.load_relations import LoadRelations,UnloadRelations
+from arches.app.utils.auth_system import create_default_auth_system
 import arches.management.commands.package_utils.update_schema as update_schema
 import arches.management.commands.package_utils.migrate_resources as migrate_resources
 from arches.management.commands.package_utils.resource_graphs import load_graphs
@@ -288,8 +289,7 @@ class Command(BaseCommand):
         os.system('psql -h %(HOST)s -p %(PORT)s -U %(USER)s -d postgres -f "%(truncate_path)s"' % db_settings)
         os.system('psql -h %(HOST)s -p %(PORT)s -U %(USER)s -d %(NAME)s -f "%(install_path)s"' % db_settings)
 
-        self.create_groups()
-        self.create_users()
+        create_default_auth_system()
 
     def generate_procfile(self, package_name):
         """
@@ -321,65 +321,6 @@ class Command(BaseCommand):
         file_name_wo_extention = file_name[:-4]
         package_root = settings.PACKAGE_ROOT
         return os.path.join(package_root, 'elasticsearch', file_name_wo_extention)
-
-    def create_groups(self):
-        """
-        Creates read and edit groups.
-        """
-
-        from django.contrib.auth.models import User, Group
-
-        edit_group = Group.objects.create(name='edit')
-        read_group = Group.objects.create(name='read')
-
-    def create_users(self):
-        """
-        Creates anonymous user and adds anonymous and admin user to appropriate groups.
-        """
-
-        from django.contrib.auth.models import User, Group
-
-        anonymous_user = User.objects.create_user('anonymous', '', '')
-        read_group = Group.objects.get(name='read')
-        anonymous_user.groups.add(read_group)
-
-        edit_group = Group.objects.get(name='edit')
-
-        # remove the default Arches admin user (we want more control over this)
-        admin_user = User.objects.get(username='admin')
-        admin_user.delete()
-
-        # now create users by iterating the initial users CSV
-        if not os.path.isfile(settings.INITIAL_USERS_CONFIG):
-            return
-        with open(settings.INITIAL_USERS_CONFIG, "rb") as opencsv:
-            reader = unicodecsv.DictReader(opencsv)
-            print "\nCREATING USERS\n--------------"
-            for info in reader:
-
-                # create the user object from info in row
-                newuser = User(
-                    username=info['username'],
-                    first_name=info['firstname'],
-                    last_name=info['lastname'],
-                    email=info['email'],
-                )
-                if info['staff'].lower().rstrip() == 'yes':
-                    newuser.is_staff = True
-                if info['superuser'].lower().rstrip() == 'yes':
-                    newuser.is_superuser = True
-                newuser.set_password(info['password'])
-                newuser.save()
-
-                # once saved, add the user to groups as needed
-                for g in info['groups'].split(";"):
-                    gname = g.lstrip().rstrip()
-                    if gname == "read":
-                        newuser.groups.add(read_group)
-                    if gname == "edit":
-                        newuser.groups.add(edit_group)
-
-                print "  --",newuser.username
 
     def build_permissions(self):
         """
