@@ -9,6 +9,8 @@ import decimal
 import sys
 import os
 from arches.management.commands import utils
+from arches.app.models.models import Entities
+from django.core.exceptions import ObjectDoesNotExist
 import time
 from arches.app.models.models import UniqueIds
 
@@ -263,7 +265,10 @@ class Validator(object):
                 rownum += 1
 
         for resourceid in unique_relationids - self.unique_resourceids:
-            self.append_error('"{0}" is present in {1} but not {2}. Both resourceids must be present in {3} in order to create a valid relation.'.format(resourceid, relations_file.split('/')[-1], arches_file.split('/')[-1], arches_file.split('/')[-1]), 'relations_errors')
+            try:
+                Entities.objects.get(entityid=resourceid, entitytypeid__isresource=True)
+            except ObjectDoesNotExist:
+                self.append_error('"{0}" is not present in {1}, and isn\'t recognised as a current unique ID'.format(resourceid, arches_file.split('/')[-1]))
 
     def get_businesstable(self, resource, attributename):
         try:
@@ -317,6 +322,8 @@ class ArchesReader():
             print "Please review the errors at %s, \ncorrect the errors and then rerun this script." % (os.path.join(settings.PACKAGE_ROOT, 'logs', 'validation_errors.txt'))
             if break_on_error:
                 sys.exit(101)
+
+        return sorted_errors
 
     def load_file(self, arches_file):
         '''Reads an arches data file and creates resource graphs'''

@@ -212,7 +212,11 @@ class ResourceLoader(object):
             relationshiptype_concept = Concepts.objects.get(legacyoid = relationship['RELATION_TYPE'])
             concept_value = Values.objects.filter(conceptid = relationshiptype_concept.conceptid).filter(valuetype = 'prefLabel')
             entityid1 = legacyid_to_entityid[relationship['RESOURCEID_FROM']]
-            entityid2 = legacyid_to_entityid[relationship['RESOURCEID_TO']]
+            if relationship['RESOURCEID_TO'] in legacyid_to_entityid.keys():
+                entityid2 = legacyid_to_entityid[relationship['RESOURCEID_TO']]
+            else:
+                # If entityid is not in dictionary, likely is a uuid to previously existing resource
+                entityid2 = relationship['RESOURCEID_TO']
 
         else:
             concept_value = Values.objects.filter(valueid = relationship['RELATION_TYPE'])

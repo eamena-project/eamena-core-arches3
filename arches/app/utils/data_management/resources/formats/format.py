@@ -129,7 +129,19 @@ class Writer(object):
             geom = GEOSGeometry(JSONSerializer().serialize(g['value'], ensure_ascii=False))
             geoms.append(geom)
         if geo_process=='collection':
-            geometry = GeometryCollection(geoms)
+            
+            ## need to iterate the list and double-iterate any geom collections
+            ## to make a new list of only simple geometries, which is, in turn,
+            ## transformed back into a collection.
+            newgeomlist = list()
+            for g in geoms:
+                if g.geom_typeid == 7:
+                    for gchild in g:
+                        newgeomlist.append(gchild)
+                else:
+                    newgeomlist.append(g)
+                    
+            geometry = GeometryCollection(newgeomlist)
             result = {'type':'Feature','geometry': geometry,'properties': properties}
         elif geo_process == 'sorted':
             result = []
@@ -150,6 +162,16 @@ class Writer(object):
                 if geom.geom_typeid == 6:
                     for feat in geom:
                         sorted_geoms['polys'].append(feat)
+                # process a geometry collection by iterating and further
+                # sorting its pieces
+                if geom.geom_typeid == 7:
+                    for g in geom:
+                        if g.geom_typeid == 0:
+                            sorted_geoms['points'].append(g)
+                        if g.geom_typeid == 1:
+                            sorted_geoms['lines'].append(g)
+                        if g.geom_typeid == 3:
+                            sorted_geoms['polys'].append(g)
             if len(sorted_geoms['points']) > 0:
                 result.append({'type':'Feature','geometry': MultiPoint(sorted_geoms['points']),'properties': properties})
             if len(sorted_geoms['lines']) > 0:
