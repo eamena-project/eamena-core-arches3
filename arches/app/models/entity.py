@@ -125,7 +125,7 @@ class Entity(object):
         
     def create_uniqueids(self, entitytype, is_new_resource = False):  # Method that creates UniqueIDs and its correlated Entity when a new resource is saved, or else only a UniqueId when the entity is already present (this will happen if the entities are created via importer.py
 
-        uniqueid_node = settings.RESOURCE_TYPE_CONFIGS()[self.entitytypeid]['primary_name_lookup']['entity_type']
+        uniqueid_node = settings.RESOURCE_TYPE_CONFIGS()[self.get_root().entitytypeid]['primary_name_lookup']['entity_type']
         if entitytype in settings.EAMENA_RESOURCES:
           type = settings.EAMENA_RESOURCES[entitytype]
         else:
@@ -144,14 +144,19 @@ class Entity(object):
         uniqueidmodelinstance = uniqueidmodel()
         uniqueidmodelinstance.entityid = entity2 if is_new_resource else archesmodels.Entities.objects.get(pk=self.entityid)
         uniqueidmodelinstance.id_type = type
-        
-        try:
-          lastID = archesmodels.UniqueIds.objects.filter(id_type__exact=type).latest()
-          IdInt = int(lastID.val) + 1
-          uniqueidmodelinstance.val = str(IdInt)
-            
-        except ObjectDoesNotExist:
-          uniqueidmodelinstance.val = str(1)
+
+        if self.value:
+            # Setting ID to value already defined
+            num = int(self.value[-settings.ID_LENGTH:])
+            uniqueidmodelinstance.val = str(num)
+        else:
+            try:
+                lastID = archesmodels.UniqueIds.objects.filter(id_type__exact=type).latest('val')
+                IdInt = int(lastID.val) + 1
+                uniqueidmodelinstance.val = str(IdInt)
+
+            except ObjectDoesNotExist:
+                uniqueidmodelinstance.val = str(1)
                 
         uniqueidmodelinstance.order_date = datetime.datetime.now()
         uniqueidmodelinstance.save()
@@ -180,14 +185,20 @@ class Entity(object):
         entity.entityid = self.entityid
         entity.save()
         if is_new_resource:
-          newid = self.create_uniqueids(str(entitytype), is_new_resource)
-          self.append_child(Entity().get(newid, archesmodels.Entities.objects.get(pk = entity.entityid)))
+            contains_eamena_id = False
+            for child in self.child_entities:
+                if child.entitytypeid == 'EAMENA_ID.E42':
+                    contains_eamena_id = True
+            if not contains_eamena_id:
+                newid = self.create_uniqueids(str(entitytype), is_new_resource)
+                self.append_child(Entity().get(newid, archesmodels.Entities.objects.get(pk = entity.entityid)))
         else:
-          if str(entitytype) == 'EAMENA_ID.E42':
-            try:
-              archesmodels.UniqueIds.objects.get(pk=self.entityid)
-            except ObjectDoesNotExist:
-              self.create_uniqueids(str(entitytype), is_new_resource=False)
+            if entity.entitytypeid.businesstablename == 'uniqueids':
+                try:
+                    archesmodels.UniqueIds.objects.get(pk=self.entityid)
+                except ObjectDoesNotExist:
+                    self.create_uniqueids(self.get_root().entitytypeid, is_new_resource=False)
+                    is_new_entity = False
 
                                      
         columnname = entity.entitytypeid.getcolumnname()

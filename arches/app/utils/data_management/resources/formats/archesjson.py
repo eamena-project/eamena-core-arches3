@@ -7,11 +7,13 @@ from django.conf import settings
 from django.db import connection
 import arches.app.models.models as archesmodels
 from arches.app.models.resource import Resource
+from arches.app.models.models import UniqueIds
 import codecs
 from format import Writer
 import json
 from arches.app.utils.betterJSONSerializer import JSONSerializer, JSONDeserializer
-
+import time
+from arches.management.commands import utils
 
 
 try:
@@ -88,7 +90,40 @@ class JsonWriter(Writer):
 class JsonReader():
 
     def validate_file(self, archesjson, break_on_error=True):
-        pass
+        """
+        Going to validate the file and return errors similar to arches validation.
+        Current only looks at the EAMENA_ID so isn't spun out into a different function/object
+        """
+        start_time = time.time()
+        with open(archesjson, 'r') as f:
+            resources = JSONDeserializer().deserialize(f.read())
+
+        errors = []
+        for count, resource in enumerate(resources['resources']):
+            if resource['entitytypeid'] in settings.EAMENA_RESOURCES:
+                id_type = settings.EAMENA_RESOURCES[resource['entitytypeid']]
+            else:
+                id_type = resource['entitytypeid'].split('_')[0]
+            for entity in resource['child_entities']:
+                if entity['entitytypeid'] == 'EAMENA_ID.E42':
+                    eamena_id = entity['value']
+                    num = int(eamena_id[len(id_type) + 1:])
+                    found_ents = UniqueIds.objects.filter(val=num, id_type=id_type)
+                    if len(found_ents) > 0:
+                        errors.append('ERROR RESOURCE: {0} - {1} is a pre-existing unique ID.'.format(count+1, eamena_id))
+                        break
+
+        duration = time.time() - start_time
+        print 'Validation of your JSON file took: {0} seconds.'.format(str(duration))
+
+        if len(errors) > 0:
+            utils.write_to_file(os.path.join(settings.PACKAGE_ROOT, 'logs', 'validation_errors.txt'),
+                                '\n'.join(errors))
+            print "\n\nERROR: There were errors detected in your JSON file."
+            print "Please review the errors at %s, \ncorrect the errors and then rerun this script." % (
+                os.path.join(settings.PACKAGE_ROOT, 'logs', 'validation_errors.txt'))
+            if break_on_error:
+                sys.exit(101)
 
     def load_file(self, archesjson):
         resources = []

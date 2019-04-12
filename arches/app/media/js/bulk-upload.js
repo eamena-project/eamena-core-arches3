@@ -226,6 +226,23 @@ $( document ).ready(function() {
                 }
             });
         }
+
+        function uniqueids(data, textStatus, jqXHR) {
+            if (!data.success) {return false}
+            test = 'uniqueids';
+            return $.ajax({
+                beforeSend: function(request) {
+                    request.setRequestHeader("X-CSRFToken",csrftoken);
+                },
+                url: '/bulk-upload/validate',
+                type: 'post',
+                data: setValPostData(test,filePath),
+                success: function(result) {
+                    displayResults(result,test)
+                    if (!result.success) {passed = false} else {archesFilepath = result.filepath;};
+                }
+            });
+        }
         
         function writefile(data, textStatus, jqXHR) {
             if (!data.success) {return false}
@@ -262,7 +279,7 @@ $( document ).ready(function() {
         }
         
         // chain all individual validation ajax requests together to simulate asynchronous behavior
-        headers().then(rows_and_values).then(dates).then(geometries).then(concepts).then(files).then(writefile).then(validateMsgs);
+        headers().then(rows_and_values).then(dates).then(geometries).then(concepts).then(files).then(uniqueids).then(writefile).then(validateMsgs);
 
     });
 
