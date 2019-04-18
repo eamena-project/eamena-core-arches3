@@ -25,9 +25,10 @@ def LoadRelations(source):
             nrelations += 1
             try:
                 ResourceLoader().relate_resources(row, legacyid_to_entityid = None, archesjson = True)
-            except:
+            except Exception as e:
                 error = "Issue with entity1 %s and entity2 %s" % (row['RESOURCEID_FROM'], row['RESOURCEID_TO'])
                 print error
+                print str(e)
                 ret['errors'].append(error)
 
     log_msg = "\n~~~~~\n{}\nfile: {}\nrelations: {}\nloadid: {}".format(
