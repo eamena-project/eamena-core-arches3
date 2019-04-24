@@ -719,6 +719,12 @@ class Concept(object):
                 
         for row in rows: # Looks for concepts which have multiple-language labels, including the target language, and builds an index of those rows
             rec = dict(zip(column_names, row))
+
+            # need to retain the sortorder values, even if they don't have the correct language
+            # associated with them.
+            if rec['vtype'] == "sortorder":
+                continue
+
             if str(rec['languageid']).lower() != language:
                 for concept in list_of_good_concepts:
                     if rec['conceptpath'][-37:-1] == concept:  #Retrieves the bottom conceptid in the conceptpath
