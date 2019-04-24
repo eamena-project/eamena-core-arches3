@@ -110,6 +110,7 @@ def RESOURCE_TYPE_CONFIGS():
         # override this setting in your packages settings.py file
         #
         # 'HERITAGE_RESOURCE.E18': {
+        #     'allow_bulk_upload: True,
         #     'resourcetypeid': 'HERITAGE_RESOURCE.E18',
         #     'name': _('Heritage Resource'),
         #     'icon_class': 'fa fa-trophy',

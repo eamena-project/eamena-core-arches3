@@ -44,7 +44,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
                     </select>
                     <select id="resource-type-select" class="upload-page-select" disabled>
                     {% for type, type_data in resource_types %}
+                        {% if type_data.allow_bulk_upload %}
                         <option value="{{type}}">{{type_data.name}}</option>
+                        {% endif %}
                     {% endfor %}
                         <option value="relations">Resource Relationships</option>
                     </select>
