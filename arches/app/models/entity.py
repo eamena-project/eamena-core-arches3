@@ -151,8 +151,11 @@ class Entity(object):
             uniqueidmodelinstance.val = str(num)
         else:
             try:
-                lastID = archesmodels.UniqueIds.objects.filter(id_type__exact=type).latest('val')
-                IdInt = int(lastID.val) + 1
+                # make a list of all the ids for this id_type and cast them as integers
+                ids = [int(i.val) for i in archesmodels.UniqueIds.objects.filter(id_type=type)]
+                # get the highest one and then advance it to determine the new id
+                lastID = max(ids)
+                IdInt = lastID + 1
                 uniqueidmodelinstance.val = str(IdInt)
 
             except ObjectDoesNotExist:
