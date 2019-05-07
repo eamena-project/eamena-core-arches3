@@ -636,10 +636,5 @@ class Command(BaseCommand):
                 result['success'] = False
                 result['errors'].append(".arches file validation error: "+ae)
 
-        arches_errors = ArchesReader().validate_file(destination,break_on_error=False)
-        for ae in arches_errors:
-            result['success'] = False
-            result['errors'].append(".arches file validation error: "+ae)
-
         return result
 
