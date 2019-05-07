@@ -72,6 +72,7 @@ $( document ).ready(function() {
     var archesFilepath = '';
     var formdata = new FormData();
     var xhr = null;
+    var load_id = '';
 
     'use strict';
     var csrftoken = $("[name=csrfmiddlewaretoken]").val();
@@ -307,11 +308,13 @@ $( document ).ready(function() {
                 'restype': $('#resource-type-select').val()
             },
             success: function(result) {
-                if (result.errors) {
+                let res = JSON.parse(result);
+                if (res.errors) {
                     console.log("python errors:");
-                    console.log(result.errors);
+                    console.log(res.errors);
                 }
-                formdata.append('resdict', result.load_id)
+                formdata.append('resdict', JSON.stringify(res.legacyid_to_entityid));
+                load_id = res.load_id;
                 if ($('#folder-upload-div').is(":visible")) {
                     $('#full-load-mask').hide();
                     $('#import-msg').css("color", "green");
@@ -322,36 +325,63 @@ $( document ).ready(function() {
             }
         });
     });
-    $('#folderupload').change( function () {
-        $('#folder-msg').css("color","orange");
-        $('#folder-msg').text("Uploading files... this may take a while.");
-    });   
+
     $('#folderupload').fileupload({
-            async: false,
-            beforeSend: function(request) {
-                request.setRequestHeader("X-CSRFToken",csrftoken);
-            },
-            dataType: 'json',
-            formData: formdata,
-            done: function (e, data) {
-                if (!data.result.foldervalid) {
-                    // note that resources will have been uploaded with missing images
-                    $('#folder-msg').css("color","red");
-                    $('#folder-msg').text("Failed to identify matching resource.");
-                } else {
-                    $('#folder-msg').css("color","green");
-                    $('#folder-msg').text("Upload successful - click finished!");
-                    $('#folder-upload-btn').removeAttr('disabled');
-                }
-            },
-        }).prop('disabled', !$.support.fileInput)
-            .parent().addClass($.support.fileInput ? undefined : 'disabled');
+        beforeSend: function(request) {
+            request.setRequestHeader("X-CSRFToken",csrftoken);
+        },
+        dataType: 'json',
+        formData: formdata,
+        singleFileUploads: false,
+        start: function(e) {
+            $('#folder-msg').css("color", "orange");
+            $('#folder-msg').text("Uploading files...");
+            $('#validate-load-mask').show();
+        },
+        done: function (e, data) {
+            displayResults(data.result, 'attachments');
+            if (!data.result.success) {
+                // note that resources will have been uploaded with missing images
+                $('#folder-msg').css("color","red");
+                $('#folder-msg').text("Attachment upload failed");
+                $('#undo-load-btn').show();
+            } else {
+                $('#folder-msg').css("color","green");
+                $('#folder-msg').text("Upload successful");
+                $('#folder-upload-btn').removeAttr('disabled');
+            }
+            $('#validate-load-mask').hide();
+        },
+    }).prop('disabled', !$.support.fileInput).parent().addClass($.support.fileInput ? undefined : 'disabled');
 
 
     $('#folder-upload-btn').click(function () {
         window.location.href = $("#bulk-url").attr("data-url");
     });
 
+    $('#undo-load-btn').click(function() {
+        $('#folder-msg').css("color", "orange");
+        $('#folder-msg').text("Removing resources...");
+        $.ajax({
+            beforeSend: function(request) {
+                request.setRequestHeader("X-CSRFToken",csrftoken);
+            },
+            url: '/bulk-upload/undo',
+            type: 'post',
+            datatype: 'json',
+            data: {
+                'load_id': load_id
+            },
+            success: function(result) {
+                if (!result.success) {
+                    console.log("python errors:");
+                    console.log(result.errors);
+                }else {
+                    window.location.href = $("#bulk-url").attr("data-url");
+                }
+            }
+        });
+    });
 
     updateRestype();
 });

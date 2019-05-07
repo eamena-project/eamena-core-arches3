@@ -176,36 +176,42 @@ def import_archesfile(request):
         print e
 
     val = output.getvalue().strip()
-    return HttpResponse(json.dumps({'load_id': val}), content_type="application/json")
+    return HttpResponse(json.dumps(val), content_type="application/json")
 
 def upload_attachments(request):
     """
-    We'll enter this view for each file within the uploaded folder. So for each one we need to find which resource it
+    We'll enter this view once for the uploaded folder. For each file we need to find which resource it
     belongs to (if any) and add that entry. We're pulling a dictionary of old and new resource ids out from the load_resources
     process and using that to update and edit the file entities.
     """
 
     response_data = {
-        'foldervalid': True,
+        'success': True,
+        'errors': []
     }
 
     if request.method == 'POST':
         resdict = json.loads(request.POST['resdict'])
-        f = request._files['attachments[]']
+        myfiles = {}
+        for f in request.FILES.getlist('attachments[]'):
+            filename, ext = os.path.splitext(os.path.basename(str(f)))
+            if ext == '.xlsx':
+                continue
+            myfiles[f._name.replace(" ", "_")] = f
 
-        filename, ext = os.path.splitext(os.path.basename(str(f)))
-        if ext == '.xlsx':
-            return HttpResponse(json.dumps({}), content_type="application/json")
-
+        updated = []
         archesfile = request.POST['archesfile']
         archesfilepath = os.path.join(settings.BULK_UPLOAD_DIR, archesfile)
         with open(archesfilepath, 'r') as ins:
             for l in ins:
                 if 'FILE_PATH' in l:
                     data = l.split('|')
-                    if data[3] == f._name.replace(" ","_"):
+                    if data[3] in myfiles.keys():
+                        f = myfiles[data[3]]
                         if data[0] not in resdict:
-                            response_data['foldervalid'] = False
+                            response_data['success'] = False
+                            response_data['errors'].append('Unable to find resource ID information for %s. Did you load the resources?' % data[0])
+                            continue
                         resid = resdict[data[0]]
                         res = Resource(resid)
                         res.set_entity_value('FILE_PATH.E62', f)
@@ -213,11 +219,37 @@ def upload_attachments(request):
                         if thumb != None:
                             res.set_entity_value('THUMBNAIL.E62', thumb)
                         res.save()
-                        
-                        ## reset the file names as the paths may have been modified
-                        ## by django during the above save process
-                        res.set_entity_value('FILE_PATH.E62', str(f).replace(" ","_"))
-                        res.set_entity_value('THUMBNAIL.E62', str(thumb).replace(" ","_"))
-                        res.save()
+                        res.index()
+                        updated.append(data[0])
+
+        if len(updated) != len(resdict.keys()):
+            response_data['success'] = False
+            for resid in set(resdict.keys()) - set(updated):
+                response_data['errors'].append('Missing file for the resource on line %s.' % (int(resid)+2))
+
+    return HttpResponse(json.dumps(response_data), content_type="application/json")
+
+
+def undo_load(request):
+    """
+    This will remove the loaded resources from the database.
+    """
+
+    response_data = {
+        'success': True,
+        'errors': [],
+    }
+
+    if request.method == 'POST':
+        load_id = request.POST.get('load_id')
+        if load_id:
+            call_command('packages',
+                         operation='remove_resources',
+                         load_id=load_id,
+                         force=True
+                         )
+        else:
+            response_data['success'] = False
+            response_data['errors'].append('Load ID was not found.')
 
     return HttpResponse(json.dumps(response_data), content_type="application/json")
