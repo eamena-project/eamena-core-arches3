@@ -148,6 +148,7 @@ class Command(BaseCommand):
             e = int(e) if e != "" else None
 
         use_these = resources[s:e]
+        allids = [i['entityid'] for i in use_these]
         print "converting {} resources".format(len(use_these))
 
         errors = list()
@@ -175,7 +176,7 @@ class Command(BaseCommand):
 
         orig_relations = input_file.replace(".json","_resource_relationships.csv")
         out_relations = out_arches.replace(".arches",".relations")
-        self.convert_or_create_relations(orig_relations, out_relations)
+        self.convert_or_create_relations(orig_relations, out_relations, resids=allids)
 
         if len(errors) > 0:
             with open(logfile, "wb") as openf:
@@ -195,7 +196,7 @@ class Command(BaseCommand):
         if not missing_labels and not errors:
             print "\n--- completed without errors(!) ---"
 
-    def convert_or_create_relations(self, source_relations, out_relations):
+    def convert_or_create_relations(self, source_relations, out_relations, resids=None):
 
         relations = []
         if os.path.isfile(source_relations):
@@ -203,6 +204,9 @@ class Command(BaseCommand):
                 reader = unicodecsv.reader(openorig)
                 reader.next()
                 for row in reader:
+                    if resids is not None:
+                        if row[0] not in resids or row[1] not in resids:
+                            continue
                     relations.append(row)
             if self.verbose:
                 print "using existing relations file"
@@ -211,14 +215,21 @@ class Command(BaseCommand):
             if self.verbose:
                 print "ceating blank relations file"
 
+        # check and convert concept ids if that's what's in the rr file
+        for row in relations:
+            rtype = row.pop(4)
+            try:
+                concept = Concepts.objects.get(conceptid=rtype)
+                value = Values.objects.filter(conceptid=concept)[0].valueid
+                row.insert(4, value)
+            except Exception as e:
+                row.insert(4, rtype)
+
         with open(out_relations, "wb") as openf:
             writer = unicodecsv.writer(openf, delimiter="|")
             writer.writerow(['RESOURCEID_FROM', 'RESOURCEID_TO', 'START_DATE', 'END_DATE', 'RELATION_TYPE', 'NOTES'])
             for row in relations:
-                if len(row) == 5: row += [""]
-                r = rr_lookup[row[4]]
-                outrow = [row[0],row[1],row[2],row[3],r,row[5]]
-                writer.writerow(outrow)
+                writer.writerow(row)
 
     def write_arches_file(self, rows, outname="v2_resources.arches"):
 
