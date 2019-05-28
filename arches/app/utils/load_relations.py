@@ -19,8 +19,19 @@ def LoadRelations(source):
     ret = {'load_id': load_id, 'errors': []}
 
     nrelations = 0
+
+    # manual test to find what delimiter to use
+    with open(source, "rb") as openf:
+        lines = openf.readlines()
+        if "," in lines[0]:
+            delim = ","
+        elif "|" in lines[0]:
+            delim = "|"
+        else:
+            delim = ","
+
     with open(source, 'rb') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter= ',')
+        reader = csv.DictReader(csvfile, delimiter=delim)
         for row in reader:
             nrelations += 1
             try:

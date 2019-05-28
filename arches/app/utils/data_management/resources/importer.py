@@ -71,7 +71,15 @@ class ResourceLoader(object):
             filename=os.path.basename(source)
         )     
         if os.path.exists(relationships_file):
-            relationships = csv.DictReader(open(relationships_file, 'r'), delimiter='|')
+            with open(relationships_file, "rb") as openf:
+                lines = openf.readlines()
+                if "," in lines[0]:
+                    delim = ","
+                elif "|" in lines[0]:
+                    delim = "|"
+                else:
+                    delim = ","
+            relationships = csv.DictReader(open(relationships_file, 'r'), delimiter=delim)
             for relationship in relationships:
                 related_resource_records.append(self.relate_resources(relationship, results['legacyid_to_entityid'], archesjson))
         else:
@@ -222,6 +230,10 @@ class ResourceLoader(object):
             concept_value = Values.objects.filter(valueid = relationship['RELATION_TYPE'])
             entityid1 = relationship['RESOURCEID_FROM']
             entityid2 = relationship['RESOURCEID_TO']
+
+        if len(concept_value) == 0:
+            concept = Concepts.objects.get(conceptid=relationship['RELATION_TYPE'])
+            concept_value = Values.objects.filter(conceptid=concept)
 
         related_resource_record = RelatedResource(
             entityid1 = entityid1,
