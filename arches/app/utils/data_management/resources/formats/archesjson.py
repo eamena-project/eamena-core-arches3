@@ -15,6 +15,14 @@ from arches.app.utils.betterJSONSerializer import JSONSerializer, JSONDeserializ
 import time
 from arches.management.commands import utils
 
+import time
+from multiprocessing import Pool, TimeoutError, cpu_count
+from django.db import connections
+
+# this wrapper function must be outside of the class to be called during the
+# multiprocessing operations.
+def write_one_resource_wrapper(args):
+    return JsonWriter.write_one_resource(*args)
 
 try:
     from cStringIO import StringIO
@@ -23,10 +31,48 @@ except ImportError:
 
 class JsonWriter(Writer):
 
-    def __init__(self):
+    def __init__(self, jsonl=False):
         super(JsonWriter, self).__init__()
+        self.jsonl = jsonl
+
+    def write_one_resource(self, resource_id):
+
+        a_resource = Resource().get(resource_id)
+        a_resource.form_groups = None
+        jsonres = JSONSerializer().serialize(a_resource, separators=(',',':'))
+        return jsonres
 
     def write_resources(self, resources, resource_export_configs):
+    
+        # Introduce a new section here to export jsonl files. This is for huge databases,
+        # and can only be called through the commandline.
+        if self.jsonl is True:
+
+            process_count = cpu_count()
+            print "number of cores:", cpu_count()
+            print "number of parallel processes:", process_count
+            pool = Pool(cpu_count())
+
+            restypes = [i.entitytypeid for i in archesmodels.EntityTypes.objects.filter(isresource=True)]
+
+            for restype in restypes:
+                start = time.time()
+                resources = archesmodels.Entities.objects.filter(entitytypeid=restype)
+                resids = [r.entityid for r in resources]
+                
+                for conn in connections.all():
+                    conn.close()
+                
+                outfile = dest_dir.replace(".jsonl","-"+restype+".jsonl")
+                with open(outfile, 'w') as f:
+
+                    print "Writing {0} {1} resources".format(len(resids), restype) 
+                    joined_input = [(self,r) for r in resids]
+                    for res in pool.imap(write_one_resource_wrapper, joined_input):
+                        f.write(res+"\n")
+
+                print "elapsed time:", time.time()-start
+            return
 
         # this is a hacky way of fixing this method, as the real problem lies
         # lies upstream where this method is called.
@@ -34,7 +80,7 @@ class JsonWriter(Writer):
         # If the resources variable is a string, assume that it's been passed
         # in through the command line, and is actually the file path/name of
         # the desired output json file. In this case, run the original v3 code here.
-        if isinstance(resources, str):
+        elif isinstance(resources, str):
             dest_dir = resources
             cursor = connection.cursor()
             cursor.execute("""select entitytypeid from data.entity_types where isresource = TRUE""")
