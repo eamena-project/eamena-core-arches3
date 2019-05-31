@@ -103,6 +103,7 @@ class ResourceLoader(object):
                 masterGraph = None
                 if current_entitiy_type != resource.entitytypeid:
                     schema = Resource.get_mapping_schema(resource.entitytypeid)
+                    current_entitiy_type = resource.entitytypeid
 
                 master_graph = self.build_master_graph(resource, schema)
                 self.pre_save(master_graph)
@@ -110,21 +111,22 @@ class ResourceLoader(object):
                 try:
                     uuid.UUID(resource.resource_id)
                     entityid = resource.resource_id
-                except(ValueError):
+                except ValueError:
                     entityid = ''
-                    
-                if append == True:
-                  try:
-                      resource_to_delete = Resource(entityid)
-                      resource_to_delete.delete_index()
-                  except ObjectDoesNotExist:
-                      print 'Entity ',entityid,' does not exist. Nothing to delete'          
+
+                if append:
+                    try:
+                        resource_to_delete = Resource(entityid)
+                        resource_to_delete.delete_index()
+                    except ObjectDoesNotExist:
+                        print 'Entity ',entityid,' does not exist. Nothing to delete'
 
                 master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
                 resource.entityid = master_graph.entityid
-                new_resource = Resource().get(resource.entityid)
+                #new_resource = Resource().get(resource.entityid)
+                #assert new_resource == master_graph
                 try:
-                    new_resource.index()
+                    master_graph.index()
                 except Exception as e:
                     print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
                 legacyid_to_entityid[resource.resource_id] = master_graph.entityid
