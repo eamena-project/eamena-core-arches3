@@ -94,53 +94,54 @@ class ResourceLoader(object):
         legacyid_to_entityid = {}
         errors = []
         progress_interval = 250
-        for count, resource in enumerate(resource_list):
+        with transaction.atomic():
+            for count, resource in enumerate(resource_list):
 
-            if count >= progress_interval and count % progress_interval == 0:
-                print count, 'of', len(resource_list), 'loaded'
+                if count >= progress_interval and count % progress_interval == 0:
+                    print count, 'of', len(resource_list), 'loaded'
 
-            if archesjson == False:
-                masterGraph = None
-                if current_entitiy_type != resource.entitytypeid:
-                    schema = Resource.get_mapping_schema(resource.entitytypeid)
-                    current_entitiy_type = resource.entitytypeid
+                if archesjson == False:
+                    masterGraph = None
+                    if current_entitiy_type != resource.entitytypeid:
+                        schema = Resource.get_mapping_schema(resource.entitytypeid)
+                        current_entitiy_type = resource.entitytypeid
 
-                master_graph = self.build_master_graph(resource, schema)
-                self.pre_save(master_graph)
+                    master_graph = self.build_master_graph(resource, schema)
+                    self.pre_save(master_graph)
 
-                try:
-                    uuid.UUID(resource.resource_id)
-                    entityid = resource.resource_id
-                except ValueError:
-                    entityid = ''
-
-                if append:
                     try:
-                        resource_to_delete = Resource(entityid)
-                        resource_to_delete.delete_index()
-                    except ObjectDoesNotExist:
-                        print 'Entity ',entityid,' does not exist. Nothing to delete'
+                        uuid.UUID(resource.resource_id)
+                        entityid = resource.resource_id
+                    except ValueError:
+                        entityid = ''
 
-                master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
-                resource.entityid = master_graph.entityid
-                #new_resource = Resource().get(resource.entityid)
-                #assert new_resource == master_graph
-                try:
-                    master_graph.index()
-                except Exception as e:
-                    print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
-                legacyid_to_entityid[resource.resource_id] = master_graph.entityid
-            else:
-                new_resource = Resource(resource)
-                new_resource.save(user=self.user, note=load_id, resource_uuid=new_resource.entityid)
-                new_resource = Resource().get(new_resource.entityid)
-                try:
-                    new_resource.index()
-                except:
-                    print 'Could not index resource. This may be because the valueid of a concept is not in the database.'
-                legacyid_to_entityid[new_resource.entityid] = new_resource.entityid
+                    if append:
+                        try:
+                            resource_to_delete = Resource(entityid)
+                            resource_to_delete.delete_index()
+                        except ObjectDoesNotExist:
+                            print 'Entity ',entityid,' does not exist. Nothing to delete'
 
-            ret['successfully_saved'] += 1
+                    master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
+                    resource.entityid = master_graph.entityid
+                    #new_resource = Resource().get(resource.entityid)
+                    #assert new_resource == master_graph
+                    try:
+                        master_graph.index()
+                    except Exception as e:
+                        print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
+                    legacyid_to_entityid[resource.resource_id] = master_graph.entityid
+                else:
+                    new_resource = Resource(resource)
+                    new_resource.save(user=self.user, note=load_id, resource_uuid=new_resource.entityid)
+                    new_resource = Resource().get(new_resource.entityid)
+                    try:
+                        new_resource.index()
+                    except:
+                        print 'Could not index resource. This may be because the valueid of a concept is not in the database.'
+                    legacyid_to_entityid[new_resource.entityid] = new_resource.entityid
+
+                ret['successfully_saved'] += 1
 
 
         ret['legacyid_to_entityid'] = legacyid_to_entityid
