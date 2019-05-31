@@ -137,7 +137,7 @@ class Entity(object):
           entity2.entityid = str(uuid.uuid4())
           entity2.save()
           rule = archesmodels.Rules.objects.get(entitytypedomain = self.entitytypeid, entitytyperange = entity2.entitytypeid)
-          archesmodels.Relations.objects.get_or_create(entityiddomain = archesmodels.Entities.objects.get(pk=self.entityid), entityidrange = entity2, ruleid = rule)
+          archesmodels.Relations.objects.create(entityiddomain = archesmodels.Entities.objects.get(pk=self.entityid), entityidrange = entity2, ruleid = rule)
           
         
         uniqueidmodel = self._get_model('uniqueids')
@@ -264,7 +264,7 @@ class Entity(object):
         for child_entity in self.child_entities:
             child = child_entity._save()
             rule = archesmodels.Rules.objects.get(entitytypedomain = entity.entitytypeid, entitytyperange = child.entitytypeid, propertyid = child_entity.property)
-            archesmodels.Relations.objects.get_or_create(entityiddomain = entity, entityidrange = child, ruleid = rule)
+            archesmodels.Relations.objects.create(entityiddomain = entity, entityidrange = child, ruleid = rule)
         
         return entity
 
