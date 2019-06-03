@@ -47,7 +47,7 @@ class JsonWriter(Writer):
         # Introduce a new section here to export jsonl files. This is for huge databases,
         # and can only be called through the commandline.
         if self.jsonl is True:
-
+            dest_dir = resources
             process_count = cpu_count()
             print "number of cores:", cpu_count()
             print "number of parallel processes:", process_count
