@@ -130,51 +130,85 @@ class Command(BaseCommand):
         print "preparing node name and label lookups..."
         nl = self.load_lookup()
         ll = self.make_full_label_lookup("HERITAGE_PLACE.E27")
-        # print ll
-        # exit()
         cpl = self.load_cultural_period_lookup()
         lt = self.load_label_transformations()
 
         print "   done."
-        outrows = list()
-        resources = self.load_json_resources(input_file, remove_ids=remove_ids)
+        
+        # original code used to parse the normal json file.
+        if input_file.endswith(".json"):
+            outrows = list()
+            resources = self.load_json_resources(input_file, remove_ids=remove_ids)
 
-        # slice list if desired
-        if not slice:
-            s, e = None, None
-        else:
-            s, e = slice.split(":")
-            s = int(s) if s != "" else None
-            e = int(e) if e != "" else None
+            # slice list if desired
+            if not slice:
+                s, e = None, None
+            else:
+                s, e = slice.split(":")
+                s = int(s) if s != "" else None
+                e = int(e) if e != "" else None
 
-        use_these = resources[s:e]
-        allids = [i['entityid'] for i in use_these]
-        print "converting {} resources".format(len(use_these))
+            use_these = resources[s:e]
+            allids = [i['entityid'] for i in use_these]
+            print "converting {} resources".format(len(use_these))
 
-        errors = list()
-        missing_labels = list()
-        for resource in use_these:
-            if self.verbose:
-                print "=== new resource ==="
-            res = NewResource(resource,
-                node_lookup=nl,
-                label_lookup=ll,
-                period_lookup=cpl,
-                label_transformations=lt
-            )
-            if self.verbose:
-                print res.resid
-            res.make_rows()
-            outrows += res.rows
-            if len(res.errors) > 0:
-                errors.append("Resource ID: {}".format(res.resid))
-                errors += res.errors
-            missing_labels += res.missing_labels
+            errors = list()
+            missing_labels = list()
+            for resource in use_these:
+                if self.verbose:
+                    print "=== new resource ==="
+                res = NewResource(resource,
+                    node_lookup=nl,
+                    label_lookup=ll,
+                    period_lookup=cpl,
+                    label_transformations=lt
+                )
+                if self.verbose:
+                    print res.resid
+                res.make_rows()
+                outrows += res.rows
+                if len(res.errors) > 0:
+                    errors.append("Resource ID: {}".format(res.resid))
+                    errors += res.errors
+                missing_labels += res.missing_labels
 
-        out_arches = input_file.replace(".json","-v2.arches")
-        self.write_arches_file(outrows, outname=out_arches)
+            out_arches = input_file.replace(".json","-v2.arches")
+            self.write_arches_file(outrows, outname=out_arches)
+        
+        # new and improved code to handle jsonl files
+        elif input_file.endswith(".jsonl"):
+            allids = list()
+            errors = list()
+            missing_labels = list()
+            out_arches = input_file.replace(".jsonl","-v2.arches")
+            with open(out_arches, "wb") as openout:
+                writer = unicodecsv.writer(openout, delimiter="|")
+                writer.writerow(['RESOURCEID', 'RESOURCETYPE', 'ATTRIBUTENAME', 'ATTRIBUTEVALUE', 'GROUPID'])
+                with open(input_file, "rb") as openin:
+                    lines = openin.readlines()
+                    
+                    for line in lines:
+                        resource = json.loads(line)
+                        allids.append(resource['entityid'])
+                        if self.verbose:
+                            print "=== new resource ==="
+                        res = NewResource(resource,
+                            node_lookup=nl,
+                            label_lookup=ll,
+                            period_lookup=cpl,
+                            label_transformations=lt
+                        )
+                        if self.verbose:
+                            print res.resid
+                        res.make_rows()
+                        for row in res.rows:
+                            writer.writerow(row)
+                        if len(res.errors) > 0:
+                            errors.append("Resource ID: {}".format(res.resid))
+                            errors += res.errors
+                        missing_labels += res.missing_labels
 
-        orig_relations = input_file.replace(".json","_resource_relationships.csv")
+        orig_relations = os.path.splitext(input_file)[0] + "_resource_relationships.csv"
         out_relations = out_arches.replace(".arches",".relations")
         self.convert_or_create_relations(orig_relations, out_relations, resids=allids)
 
