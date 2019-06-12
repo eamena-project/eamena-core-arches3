@@ -420,6 +420,10 @@ class Entity(object):
         if len(selfEntities) == 0 and len(foundEntities) == 1:
             self.merge_at(entitytomerge, self.entitytypeid)
 
+        # if there are more than one merge nodes already in self, then merge at Root
+        if len(selfEntities) > 1 and len(foundEntities) == 1:
+            self.merge_at(entitytomerge, self.entitytypeid)
+
         return self
 
     def diff(self, entitytotest):
