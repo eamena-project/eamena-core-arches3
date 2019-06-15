@@ -163,7 +163,8 @@ class ResourceLoader(object):
                 new_resource = Resource().get(new_resource.entityid)
                 try:
                     new_resource.index()
-                except:
+                except Exception as e:
+                    print e
                     print 'Could not index resource. This may be because the valueid of a concept is not in the database.'
                 legacyid_to_entityid[new_resource.entityid] = new_resource.entityid
 
