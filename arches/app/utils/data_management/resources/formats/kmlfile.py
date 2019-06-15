@@ -52,7 +52,7 @@ class KmlWriter(Writer):
         for feature in feature_collection['features']:
             placemark = ET.SubElement(folder,'Placemark')
             placemark_name = ET.SubElement(placemark, 'name')
-            placemark_name.text = feature['properties']['Name']
+            placemark_name.text = feature['properties']['primary_name']
             placemark_description = ET.SubElement(placemark, 'description')
             visibility = ET.SubElement(placemark, 'visibility')
             visibility.text = '1'

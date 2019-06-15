@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 import csv
 import datetime
 from time import time
@@ -57,6 +58,22 @@ class ResourceLoader(object):
             reader = JsonReader()
             print '\nVALIDATING JSON FILE ({0})'.format(source)
             reader.validate_file(source)
+        elif file_format == '.jsonl':
+            archesjson = True
+            reader = JsonReader()
+            print '\nNO VALIDATION USED ON JSONL FILE ({0})'.format(source)
+            load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
+                d.hour, d.minute, d.microsecond)
+            loaded_ct = 0
+            with open(source, "rb") as openf:
+                lines = openf.readlines()
+                for line in lines:
+                    resource = json.loads(line)
+                    result = self.resource_list_to_entities([resource], True, False,
+                        filename=os.path.basename(source), load_id=load_id
+                    )
+                    loaded_ct += 1
+            return {"count":loaded_ct}
 
         start = time()
         resources = reader.load_file(source)
@@ -71,7 +88,15 @@ class ResourceLoader(object):
             filename=os.path.basename(source)
         )     
         if os.path.exists(relationships_file):
-            relationships = csv.DictReader(open(relationships_file, 'r'), delimiter='|')
+            with open(relationships_file, "rb") as openf:
+                lines = openf.readlines()
+                if "," in lines[0]:
+                    delim = ","
+                elif "|" in lines[0]:
+                    delim = "|"
+                else:
+                    delim = ","
+            relationships = csv.DictReader(open(relationships_file, 'r'), delimiter=delim)
             for relationship in relationships:
                 related_resource_records.append(self.relate_resources(relationship, results['legacyid_to_entityid'], archesjson))
         else:
@@ -82,11 +107,15 @@ class ResourceLoader(object):
         #self.se.bulk_index(self.resources)
 
 
-    def resource_list_to_entities(self, resource_list, archesjson=False, append=False, filename=''):
+    def resource_list_to_entities(self, resource_list, archesjson=False, append=False, filename='',
+                                  load_id=None):
         '''Takes a collection of imported resource records and saves them as arches entities'''
         start = time()
         d = datetime.datetime.now()
-        load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day, d.hour, d.minute, d.microsecond) #Should we append the timestamp to the exported filename?
+
+        if load_id is None:
+            load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
+                d.hour, d.minute, d.microsecond) #Should we append the timestamp to the exported filename?
 
         ret = {'successfully_saved':0, 'failed_to_save':[], 'load_id': load_id}
         schema = None
@@ -94,6 +123,7 @@ class ResourceLoader(object):
         legacyid_to_entityid = {}
         errors = []
         progress_interval = 250
+
         with transaction.atomic():
             for count, resource in enumerate(resource_list):
 
@@ -137,12 +167,11 @@ class ResourceLoader(object):
                     new_resource = Resource().get(new_resource.entityid)
                     try:
                         new_resource.index()
-                    except:
-                        print 'Could not index resource. This may be because the valueid of a concept is not in the database.'
+                    except Exception as e:
+                        print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
                     legacyid_to_entityid[new_resource.entityid] = new_resource.entityid
 
                 ret['successfully_saved'] += 1
-
 
         ret['legacyid_to_entityid'] = legacyid_to_entityid
         elapsed = (time() - start)
@@ -225,6 +254,10 @@ class ResourceLoader(object):
             concept_value = Values.objects.filter(valueid = relationship['RELATION_TYPE'])
             entityid1 = relationship['RESOURCEID_FROM']
             entityid2 = relationship['RESOURCEID_TO']
+
+        if len(concept_value) == 0:
+            concept = Concepts.objects.get(conceptid=relationship['RELATION_TYPE'])
+            concept_value = Values.objects.filter(conceptid=concept)
 
         related_resource_record = RelatedResource(
             entityid1 = entityid1,
