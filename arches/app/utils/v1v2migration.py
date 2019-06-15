@@ -1,7 +1,9 @@
+import uuid
 
 class NewResource():
     
-    def __init__(self, entity, node_lookup={}, label_lookup={}, period_lookup={}, label_transformations={}):
+    def __init__(self, entity, node_lookup={}, label_lookup={}, period_lookup={},
+            label_transformations={}, assessor_lookup={}):
 
         self.data = entity
         self.resid = entity['entityid']
@@ -15,10 +17,13 @@ class NewResource():
         self.label_lookup = label_lookup
         self.period_lookup = period_lookup
         self.label_transformations = label_transformations
+        self.assessor_lookup = assessor_lookup
         self.groups = 0
         self.rows = False
         self.errors = []
         self.missing_labels = []
+        self.has_extended_dates = False
+        self.assessor_uuids = []
     
     def advance_group(self):
 
@@ -29,23 +34,21 @@ class NewResource():
         try:
             label_options = self.label_lookup[entitytype]
         except KeyError:
-            self.errors.append("invalid node name: {}".format(entitytype))
+            self.errors.append("WARNING - invalid node name: {}".format(entitytype))
             return ""
-            
-        label_cln = label.lower().lstrip().rstrip()
+
         # check to see if this is one of the labels that needs to be
         # transformed and do so if necessary
-        v1_label = label_cln
+        v1_label = label.lower().lstrip()
         if entitytype in self.label_transformations:
-
-            if label_cln in self.label_transformations[entitytype]:
-                v1_label = self.label_transformations[entitytype][label_cln]
+            if v1_label in self.label_transformations[entitytype]:
+                v1_label = self.label_transformations[entitytype][v1_label]
 
         try:
             value = label_options[v1_label]
         except KeyError:
             self.missing_labels.append((entitytype,label))
-            self.errors.append("WARNING: invalid label in "+entitytype+" - "+ v1_label)
+            self.errors.append("WARNING - invalid label in "+entitytype+" - "+ v1_label)
             temp = label_options.values()[0]
 
             return temp
@@ -53,18 +56,27 @@ class NewResource():
 
     def get_value_from_entity(self, entity, v2node_name=None):
 
+        # In this one case, the v1 node is a domains node SOMETIMES, but in v2 it
+        # isn't. So disregard the business table name and return the label
+        if entity['entitytypeid'] == "ASSESSOR_NAME_TYPE.E55":
+            value = entity['label']
+
+            # if this is one where the uuid was also in the label field,
+            # then use the lookup table to get the real name.
+            if value in self.assessor_lookup:
+                print "converting {} to {}".format(value,self.assessor_lookup[value])
+                value = self.assessor_lookup[value]
+
+            return value
+
+        # Otherwise, process the return value based on business table name.
         datatype = entity['businesstablename']
         if datatype == "dates":
             value = entity['value'][:10]
         elif datatype == "domains":
-            # In this one case, the v1 node is a domains node, but in v2 items
-            # isn't. So use the label, instead of the value.
-            if entity['entitytypeid'] == "ASSESSOR_NAME_TYPE.E55":
-                value = entity['label']
-            else:
-                if not v2node_name:
-                    v2node_name = self.node_lookup[entity['entitytypeid']]
-                value = self.convert_concept_label(entity['label'],v2node_name)
+            if not v2node_name:
+                v2node_name = self.node_lookup[entity['entitytypeid']]
+            value = self.convert_concept_label(entity['label'],v2node_name)
         elif datatype == "geometries":
             value = entity['value']
         else:
@@ -81,21 +93,30 @@ class NewResource():
         Pass the name entity to this function and rows will be made for NAME
         and NAME TYPE."""
 
-        if len(branch_entity['child_entities']) == 0 and branch_entity['entitytypeid'] == "NAME.E41":
-            branch_entitymock_entity = {
-                    "label":"Toponym",
+        self.make_row_from_entity(branch_entity, advance_group=False)
+        
+        if len(branch_entity['child_entities']) == 0:
+            if branch_entity['entitytypeid'] == "NAME.E41":
+                default = "Toponym"
+                branch_entity['child_entities'] = [{
+                    "label":default,
                     "businesstablename":"domains",
                     "entitytypeid":"NAME_TYPE.E55"
-                }
-            self.errors.append("WARNING: expected NAME_TYPE.E55 but found none."
-                "'Toponym' used as default.")
+                }]
+                self.errors.append("WARNING - expected NAME_TYPE.E55 but found none."
+                    " '{}' used as default.".format(default))
 
-        self.make_row_from_entity(branch_entity, advance_group=False)
-        try:
-            self.make_row_from_entity(branch_entity['child_entities'][0])
-        except IndexError:
-            self.errors.append("WARNING: expected child entity in this branch but found none:")
-            self.errors.append(str(branch_entity))
+            elif branch_entity['entitytypeid'] == "SITE_FUNCTION_TYPE.E55":
+                self.errors.append("WARNING - expected SITE_FUNCTION_CERTAINTY_TYPE.E55 but found none."
+                    " Leaving field blank.")
+                return
+
+            else:
+                self.errors.append("WARNING - expected child entity in this branch but found"\
+                    " none: {}".format(str(branch_entity)))
+                return
+        
+        self.make_row_from_entity(branch_entity['child_entities'][0])
 
     def handle_condition_assessment_branch(self, branch_entity):
         
@@ -103,7 +124,8 @@ class NewResource():
         subbranch = branch_entity['child_entities'][0]
         if subbranch['entitytypeid'] == "ASSESSMENT_TYPE.E55":
             self.make_row_from_entity(subbranch, advance_group=False)
-            self.handle_one_nested(subbranch['child_entities'][0])
+            if len(subbranch['child_entities']) == 1:
+                self.handle_one_nested(subbranch['child_entities'][0])
         elif subbranch['entitytypeid'] == "CONDITION_STATE.E3":
             ssb = subbranch['child_entities'][0]
             if ssb['entitytypeid'] == "THREAT_STATE.E3":
@@ -114,14 +136,11 @@ class NewResource():
                 for parent in ssb['child_entities']:
                     for child in parent['child_entities']:
                         if len(child['child_entities']) > 0:
-                            self.errors.append("WARNING - unexpected child entity:")
-                            self.errors.append(str(child))
+                            self.errors.append("WARNING - unexpected child entity: {}".format(str(child)))
                         self.make_row_from_entity(child, advance_group=False)
                 self.advance_group()
             elif ssb['entitytypeid'] == "DISTURBANCE_STATE.E3":
-                # print "  DISTURBANCE_STATE.E3"
-
-                # first deal with the date situationn by iterating to find
+                # first deal with the date situation by iterating to find
                 # all the dates, and then using their presence/absence to
                 # determine which v2 nodes they should be placed in.
                 sdate, edate = None, None
@@ -158,40 +177,65 @@ class NewResource():
                     # relies on these nodes to have been added to the installation ahead
                     # of this conversion process.
                     elif sssb['entitytypeid'] == "DISTURBANCE_EFFECT_STATE.E3":
+                        numbered_effects = {}
                         for i in sssb['child_entities']:
 
                             nodename = i['entitytypeid']
-                            effect_num = int(nodename.split("_")[2])
-
-                            if "CERTAINTY" in nodename:
-                                self.make_row_from_entity(i,advance_group=False,
-                                    v2node="EFFECT_CERTAINTY_{}.I6".format(effect_num))
-
+                            try:
+                                effect_num = int(nodename.split("_")[2])
+                            except Exception as e:
+                                effect_num = 0
+                            
+                            if effect_num in numbered_effects:
+                                numbered_effects[effect_num].append(i)
                             else:
-                                self.make_row_from_entity(i,advance_group=False,
-                                    v2node="EFFECT_TYPE_{}.I4".format(effect_num))
+                                numbered_effects[effect_num] = [i]
+
+                        effects_keys = numbered_effects.keys()
+                        effects_keys.sort()
+                        for index, k in enumerate(effects_keys):
+                            usenum = index + 1
+                            for i in numbered_effects[k]:
+                                nodename = i['entitytypeid']
+                                if "CERTAINTY" in nodename:
+                                    self.make_row_from_entity(i,advance_group=False,
+                                        v2node="EFFECT_CERTAINTY_{}.I6".format(usenum))
+
+                                else:
+                                    self.make_row_from_entity(i,advance_group=False,
+                                        v2node="EFFECT_TYPE_{}.I4".format(usenum))
 
                     else:
-                        self.errors.append("WARNING - this branch not accounted for {}".format(sssb['entitytypeid']))
+                        msg = "WARNING - branch not accounted for DISTURBANCE_STATE.E3 > {}".format(
+                            sssb['entitytypeid'])
+                        self.errors.append(msg)
 
                 self.advance_group()
             elif ssb['entitytypeid'] in ["CONDITION_TYPE.E55", "DISTURBANCE_EXTENT_TYPE.E55"]:
                 self.make_row_from_entity(ssb)
             else:
-                print "WARNING - this branch not accounted for", ssb['entitytypeid']
+                msg = "WARNING - branch not accounted for CONDITION_STATE.E3 > {}".format(
+                    ssb['entitytypeid'])
+                self.errors.append(msg)
 
     def make_row_from_entity(self, entity, advance_group=True, v2node=None):
     
         # if a v2 node name hasn't been passed in (which should be common)
         # then use the node name lookup
         if v2node is None:
-            v2node = self.node_lookup[entity['entitytypeid']]
+            try:
+                v2node = self.node_lookup[entity['entitytypeid']]
+            except:
+                msg = "WARNING - no v2 node to match this entity:\n{}".format(str(entity))
+                self.errors.append(msg)
             
         value = self.get_value_from_entity(entity, v2node)
 
         row = [self.resid, self.restype, v2node, value, self.groups]
         self.rows.append(row)
         
+        # if entity['entitytypeid'] == "ASSESSOR_NAME_TYPE.E55":
+            # print row
         if advance_group is True:
             self.advance_group()
 
@@ -216,12 +260,13 @@ class NewResource():
                 self.handle_one_nested(tb_entity)
                 used_tb.append(tb_entity)
 
-            ## Place site function into it's own branch. This relies on extra
+            ## Place site function into its own branch. This relies on extra
             ## nodes to have been added to the resource graph.
             if entitytype == "SITE_FUNCTION_TYPE.E55":
-                self.make_row_from_entity(tb_entity, advance_group=False)
-                self.make_row_from_entity(tb_entity['child_entities'][0])
-                sft_ct += 1
+                # self.make_row_from_entity(tb_entity, advance_group=False)
+                # self.make_row_from_entity(tb_entity['child_entities'][0])
+                self.handle_one_nested(tb_entity)
+                used_tb.append(tb_entity)
 
         ## nodes in the place branches are stored separately but should be
         ## combined, as far as I can tell. Thus the group number is not advanced
@@ -236,10 +281,14 @@ class NewResource():
                     elif e['entitytypeid'] == "SPATIAL_COORDINATES_GEOMETRY.E47":
                         geom = e
                     else:
+                        # this entity is not in the resource graph I received for v1 E27,
+                        # and the few occurrences of it have blank values so it's skipped
+                        # and not migrated.
+                        if e['entitytypeid'] == "PLACE_SITE_LOCATION.E53":
+                            continue
                         self.make_row_from_entity(e, advance_group=False)
-                        if len(e['child_entities']) > 0:
-                            for little_e in e['child_entities']:
-                                self.make_row_from_entity(little_e, advance_group=False)
+                        for little_e in e['child_entities']:
+                            self.make_row_from_entity(little_e, advance_group=False)
                 used_tb.append(tb_entity)
         ## it's necessary to have collected these items ahead of time 
         ## so that they are only added if both are present.
@@ -271,7 +320,12 @@ class NewResource():
                 for sb in tb_entity['child_entities'][0]['child_entities']:
 
                     if sb['entitytypeid'] == "CULTURAL_PERIOD.E55":
-                        cp = self.period_lookup[sb['label']]
+                        if sb['label'] in self.period_lookup:
+                            cp = self.period_lookup[sb['label']]
+                        else:
+                            self.missing_labels.append((sb['entitytypeid'],sb['label']))
+                            # print "missing period lookup:", sb['label']
+                            continue
                         sb['label'] = cp['cp']
                         self.make_row_from_entity(sb, advance_group=False)
 
@@ -298,7 +352,18 @@ class NewResource():
                             self.make_row_from_entity(fei, advance_group=False)
                         self.advance_group()
 
+                    elif sb['entitytypeid'] == "TIME-SPAN_PHASE.E52":
+                        for fei in sb['child_entities']:
+                            self.has_extended_dates = True
+                            # self.errors.append(str(fei))
+                            # self.make_row_from_entity(fei, advance_group=False)
+                        # break
+                        # self.advance_group()
+                        
+
                     else:
-                        self.errors.append("WARNING - this branch not accounted for {}".format(sb['entitytypeid']))
+                        msg = "WARNING - branch not accounted for PHASE_TYPE_ASSIGNMENT.E17 > {}".format(
+                            sb['entitytypeid'])
+                        self.errors.append(msg)
 
         top_branches = [i for i in top_branches if not i in used_tb]
