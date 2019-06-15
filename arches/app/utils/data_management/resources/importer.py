@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 import csv
 import datetime
 from time import time
@@ -57,6 +58,22 @@ class ResourceLoader(object):
             reader = JsonReader()
             print '\nVALIDATING JSON FILE ({0})'.format(source)
             reader.validate_file(source)
+        elif file_format == '.jsonl':
+            archesjson = True
+            reader = JsonReader()
+            print '\nNO VALIDATION USED ON JSONL FILE ({0})'.format(source)
+            load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
+                d.hour, d.minute, d.microsecond)
+            loaded_ct = 0
+            with open(source, "rb") as openf:
+                lines = openf.readlines()
+                for line in lines:
+                    resource = json.loads(line)
+                    result = self.resource_list_to_entities([resource], True, False,
+                        filename=os.path.basename(source), load_id=load_id
+                    )
+                    loaded_ct += 1
+            return {"count":loaded_ct}
 
         start = time()
         resources = reader.load_file(source)
@@ -90,11 +107,15 @@ class ResourceLoader(object):
         #self.se.bulk_index(self.resources)
 
 
-    def resource_list_to_entities(self, resource_list, archesjson=False, append=False, filename=''):
+    def resource_list_to_entities(self, resource_list, archesjson=False, append=False, filename='',
+                                  load_id=None):
         '''Takes a collection of imported resource records and saves them as arches entities'''
         start = time()
         d = datetime.datetime.now()
-        load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day, d.hour, d.minute, d.microsecond) #Should we append the timestamp to the exported filename?
+
+        if load_id is None:
+            load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
+                d.hour, d.minute, d.microsecond) #Should we append the timestamp to the exported filename?
 
         ret = {'successfully_saved':0, 'failed_to_save':[], 'load_id': load_id}
         schema = None
