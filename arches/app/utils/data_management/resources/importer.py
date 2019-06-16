@@ -24,6 +24,9 @@ from formats.archesjson import JsonReader
 from formats.shpfile import ShapeReader
 from django.core.exceptions import ObjectDoesNotExist
 
+# def resource_list_chunk_to_entities_wrapper(args):
+    # return ResourceLoader.resource_list_chunk_to_entities(*args)
+
 class ResourceLoader(object):
 
     def __init__(self):
@@ -52,7 +55,7 @@ class ResourceLoader(object):
         elif file_format == '.arches':
             reader = ArchesReader()
             print '\nVALIDATING ARCHES FILE ({0})'.format(source)
-            reader.validate_file(source)
+            # reader.validate_file(source)
         elif file_format == '.json':
             archesjson = True
             reader = JsonReader()
@@ -105,6 +108,9 @@ class ResourceLoader(object):
         return results
 
         #self.se.bulk_index(self.resources)
+    
+    # def resource_list_chunk_to_entities():
+        
 
 
     def resource_list_to_entities(self, resource_list, archesjson=False, append=False, filename='',
@@ -123,55 +129,75 @@ class ResourceLoader(object):
         legacyid_to_entityid = {}
         errors = []
         progress_interval = 250
+        
+        def chunks(l, n):
+            """Yield successive n-sized chunks from l. Thanks to:
+            https://stackoverflow.com/a/312464/3873885"""
+            for i in xrange(0, len(l), n):
+                yield l[i:i + n]
 
-        with transaction.atomic():
-            for count, resource in enumerate(resource_list):
+        elapsed = 0
+        chunktimes = list()
+        for m, resource_list_chunk in enumerate(chunks(resource_list, progress_interval)):
+            startchunk = time()
+            multiplier = m + 1
+            with transaction.atomic():
+                for count, resource in enumerate(resource_list_chunk):
+                    real_ct = count + 1
+                    if archesjson == False:
+                        masterGraph = None
+                        if current_entitiy_type != resource.entitytypeid:
+                            schema = Resource.get_mapping_schema(resource.entitytypeid)
+                            current_entitiy_type = resource.entitytypeid
 
-                if count >= progress_interval and count % progress_interval == 0:
-                    print count, 'of', len(resource_list), 'loaded'
+                        master_graph = self.build_master_graph(resource, schema)
+                        self.pre_save(master_graph)
 
-                if archesjson == False:
-                    masterGraph = None
-                    if current_entitiy_type != resource.entitytypeid:
-                        schema = Resource.get_mapping_schema(resource.entitytypeid)
-                        current_entitiy_type = resource.entitytypeid
-
-                    master_graph = self.build_master_graph(resource, schema)
-                    self.pre_save(master_graph)
-
-                    try:
-                        uuid.UUID(resource.resource_id)
-                        entityid = resource.resource_id
-                    except ValueError:
-                        entityid = ''
-
-                    if append:
                         try:
-                            resource_to_delete = Resource(entityid)
-                            resource_to_delete.delete_index()
-                        except ObjectDoesNotExist:
-                            print 'Entity ',entityid,' does not exist. Nothing to delete'
+                            uuid.UUID(resource.resource_id)
+                            entityid = resource.resource_id
+                        except ValueError:
+                            entityid = ''
 
-                    master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
-                    resource.entityid = master_graph.entityid
-                    #new_resource = Resource().get(resource.entityid)
-                    #assert new_resource == master_graph
-                    try:
-                        master_graph.index()
-                    except Exception as e:
-                        print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
-                    legacyid_to_entityid[resource.resource_id] = master_graph.entityid
-                else:
-                    new_resource = Resource(resource)
-                    new_resource.save(user=self.user, note=load_id, resource_uuid=new_resource.entityid)
-                    new_resource = Resource().get(new_resource.entityid)
-                    try:
-                        new_resource.index()
-                    except Exception as e:
-                        print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
-                    legacyid_to_entityid[new_resource.entityid] = new_resource.entityid
+                        if append:
+                            try:
+                                resource_to_delete = Resource(entityid)
+                                resource_to_delete.delete_index()
+                            except ObjectDoesNotExist:
+                                print 'Entity ',entityid,' does not exist. Nothing to delete'
 
-                ret['successfully_saved'] += 1
+                        master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
+                        resource.entityid = master_graph.entityid
+                        #new_resource = Resource().get(resource.entityid)
+                        #assert new_resource == master_graph
+                        try:
+                            master_graph.index()
+                        except Exception as e:
+                            print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
+                        legacyid_to_entityid[resource.resource_id] = master_graph.entityid
+                    else:
+                        new_resource = Resource(resource)
+                        new_resource.save(user=self.user, note=load_id, resource_uuid=new_resource.entityid)
+                        new_resource = Resource().get(new_resource.entityid)
+                        try:
+                            new_resource.index()
+                        except Exception as e:
+                            print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
+                        legacyid_to_entityid[new_resource.entityid] = new_resource.entityid
+
+                    ret['successfully_saved'] += 1
+            endchunk = time() - startchunk
+
+            chunktimes.append(endchunk)
+            chunktime_avg = sum(chunktimes)/len(chunktimes)
+            remtime = ((len(resource_list) - (multiplier*progress_interval))*chunktime_avg/progress_interval)/60
+            if real_ct == progress_interval:
+                print "{} of {} loaded in {}m. remaining time estimate: {}m".format(
+                    progress_interval*multiplier, len(resource_list), round(sum(chunktimes)/60, 2),
+                    round(remtime, 2))
+
+            else:
+                print progress_interval*multiplier+real_ct
 
         ret['legacyid_to_entityid'] = legacyid_to_entityid
         elapsed = (time() - start)
