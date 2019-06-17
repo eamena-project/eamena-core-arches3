@@ -65,6 +65,7 @@ class ResourceLoader(object):
             archesjson = True
             reader = JsonReader()
             print '\nNO VALIDATION USED ON JSONL FILE ({0})'.format(source)
+            d = datetime.datetime.now()
             load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
                 d.hour, d.minute, d.microsecond)
             loaded_ct = 0
@@ -165,8 +166,11 @@ class ResourceLoader(object):
                                 resource_to_delete.delete_index()
                             except ObjectDoesNotExist:
                                 print 'Entity ',entityid,' does not exist. Nothing to delete'
-
-                        master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
+                        
+                        try:
+                            master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
+                        except Exception as e:
+                            print 'Could not save resource {}.\nERROR: {}'.format(master_graph.entityid,e)
                         resource.entityid = master_graph.entityid
                         #new_resource = Resource().get(resource.entityid)
                         #assert new_resource == master_graph
