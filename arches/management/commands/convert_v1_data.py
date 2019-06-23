@@ -17,7 +17,7 @@ from arches.app.models.concept import Concept
 from arches.app.models.models import ConceptRelations, Entities, EntityTypes, Concepts, Values
 
 logdir = os.path.join(settings.PACKAGE_ROOT,"logs")
-logfile = os.path.join(logdir,"v1_conversion_general_log.txt")
+logfile = os.path.join(logdir,"v1_conversion_general_log.csv")
 missed_labels_file = os.path.join(logdir,"v1_conversion_missing_labels.csv")
 
 class Command(BaseCommand):
@@ -218,7 +218,7 @@ class Command(BaseCommand):
                         for assessor in res.assessor_uuids:
                             all_assessor_uuids.append(assessor)
                         for err in res.errors:
-                            errors.append("{} {}".format(res.resid, err))
+                            errors.append((res.resid, err))
                         missing_labels += res.missing_labels
 
         orig_relations = os.path.splitext(input_file)[0] + "_resource_relationships.csv"
@@ -240,8 +240,10 @@ class Command(BaseCommand):
 
         if len(errors) > 0:
             with open(logfile, "wb") as openf:
+                writer = unicodecsv.writer(openf)
+                writer.writerow(("resourceid","msg"))
                 for e in errors:
-                    openf.write(e.encode("utf-8")+os.linesep)
+                    writer.writerow(e)
             print "errors written to", logfile
 
         if len(missing_labels) > 0:
