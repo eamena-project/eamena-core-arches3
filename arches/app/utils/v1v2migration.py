@@ -370,10 +370,15 @@ class NewResource():
                                     "businesstablename":"domains",
                                     "entitytypeid":None
                                 }
-                                self.make_row_from_entity(mock_entity, v2node="CULTURAL_PERIOD_DETAIL_TYPE.E55")#,
-                                    #advance_group=False)
+                                self.make_row_from_entity(mock_entity, v2node="CULTURAL_PERIOD_DETAIL_TYPE.E55",
+                                    advance_group=False)
+
+                            if len(sb['child_entities']) == 1:
+                                self.make_row_from_entity(sb['child_entities'][0], advance_group=False)
                             else:
-                                self.advance_group()
+                                print self.resid, len(sb['child_entities'])
+
+                            self.advance_group()
 
                         
                         elif sb['entitytypeid'] == "FEATURE_EVIDENCE_ASSIGNMENT.E17":
