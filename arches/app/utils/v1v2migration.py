@@ -317,13 +317,14 @@ class NewResource():
             
             if entitytype == "RIGHT.E30":
                 used_tb.append(tb_entity)
-                for e in tb_entity['child_entities'][0]['child_entities']:
-                    if e['entitytypeid'] == "TYPE_OF_DESIGNATION_OR_PROTECTION.E55":
-                        self.make_row_from_entity(e, advance_group=False)
-                    elif e['entitytypeid'] == "TIME_SPAN_OF_DESIGNATION_OR_PROTECTION.E52":
-                        for dentity in e['child_entities']:
-                            self.make_row_from_entity(dentity, advance_group=False)
-                self.advance_group()
+                for ce in tb_entity['child_entities']:
+                    for e in ce['child_entities']:
+                        if e['entitytypeid'] == "TYPE_OF_DESIGNATION_OR_PROTECTION.E55":
+                            self.make_row_from_entity(e, advance_group=False)
+                        elif e['entitytypeid'] == "TIME_SPAN_OF_DESIGNATION_OR_PROTECTION.E52":
+                            for dentity in e['child_entities']:
+                                self.make_row_from_entity(dentity, advance_group=False)
+                    self.advance_group()
             
             if entitytype == "PRODUCTION.E12":
 
