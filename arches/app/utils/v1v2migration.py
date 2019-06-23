@@ -1,7 +1,7 @@
 import uuid
 
 class NewResource():
-    
+
     def __init__(self, entity, node_lookup={}, label_lookup={}, period_lookup={},
             label_transformations={}, assessor_lookup={}):
 
@@ -48,7 +48,8 @@ class NewResource():
             value = label_options[v1_label]
         except KeyError:
             self.missing_labels.append((entitytype,label))
-            self.errors.append("WARNING - invalid label in "+entitytype+" - "+ v1_label)
+            msg = "WARNING - invalid label in {} - '{}'".format(entitytype, v1_label)
+            self.errors.append(msg)
             temp = label_options.values()[0]
 
             return temp
@@ -58,14 +59,25 @@ class NewResource():
 
         # In this one case, the v1 node is a domains node SOMETIMES, but in v2 it
         # isn't. So disregard the business table name and return the label
-        if entity['entitytypeid'] == "ASSESSOR_NAME_TYPE.E55":
+        entitytype = entity['entitytypeid']
+        if entitytype == "ASSESSOR_NAME_TYPE.E55":
+            
             value = entity['label']
-
             # if this is one where the uuid was also in the label field,
             # then use the lookup table to get the real name.
             if value in self.assessor_lookup:
-                print "converting {} to {}".format(value,self.assessor_lookup[value])
                 value = self.assessor_lookup[value]
+
+            return value
+
+        elif entitytype == "VALUE_OF_MEASUREMENT.E60":
+            value = entity['value'].replace(",","")
+            if len(value.split(".")) > 2:
+                value = value.replace(".","",1)
+
+            # strip out any letters
+            okchars = [str(i) for i in range(10)] + ["."]
+            value = "".join([i for i in value if i in okchars])
 
             return value
 
@@ -74,9 +86,21 @@ class NewResource():
         if datatype == "dates":
             value = entity['value'][:10]
         elif datatype == "domains":
+            label = entity['label']
             if not v2node_name:
-                v2node_name = self.node_lookup[entity['entitytypeid']]
-            value = self.convert_concept_label(entity['label'],v2node_name)
+                v2node_name = self.node_lookup[entitytype]
+            
+            # somehow the following values got stored in v1. changing
+            # them to a default value of Unknown, which is a valid label for
+            # both FEATURE_NUMBER_TYPE.E55 and INTERPRETATION_NUMBER_TYPE.E55
+            if (v2node_name == "FEATURE_NUMBER_TYPE.E55" and label in ["Toponym", "Negligible"])\
+                or (v2node_name == "INTERPRETATION_NUMBER_TYPE.E55" and label == "High"):
+                repl = "Unknown"
+                msg = "WARNING - invalid label in {} - '{}' - replacing with '{}'".format(
+                    v2node_name, label, repl)
+                self.errors.append(msg)
+                return repl
+            value = self.convert_concept_label(label,v2node_name)
         elif datatype == "geometries":
             value = entity['value']
         else:
@@ -94,7 +118,7 @@ class NewResource():
         and NAME TYPE."""
 
         self.make_row_from_entity(branch_entity, advance_group=False)
-        
+
         if len(branch_entity['child_entities']) == 0:
             if branch_entity['entitytypeid'] == "NAME.E41":
                 default = "Toponym"
@@ -119,7 +143,7 @@ class NewResource():
         self.make_row_from_entity(branch_entity['child_entities'][0])
 
     def handle_condition_assessment_branch(self, branch_entity):
-        
+
         # there's always one child entity
         subbranch = branch_entity['child_entities'][0]
         if subbranch['entitytypeid'] == "ASSESSMENT_TYPE.E55":
@@ -219,7 +243,7 @@ class NewResource():
                 self.errors.append(msg)
 
     def make_row_from_entity(self, entity, advance_group=True, v2node=None):
-    
+
         # if a v2 node name hasn't been passed in (which should be common)
         # then use the node name lookup
         if v2node is None:
@@ -263,8 +287,7 @@ class NewResource():
                 else:
                     self.make_row_from_entity(tb_entity)
                 used_tb.append(tb_entity)
-        
-        
+
         for tb_entity in top_branches:
             entitytype = tb_entity['entitytypeid']
             if entitytype in ["NAME.E41", "DESCRIPTION.E62"]:
@@ -329,53 +352,56 @@ class NewResource():
             if entitytype == "PRODUCTION.E12":
 
                 used_tb.append(tb_entity)
-                for sb in tb_entity['child_entities'][0]['child_entities']:
+                for csb in tb_entity['child_entities']:
+                    for sb in csb['child_entities']:
+                        if sb['entitytypeid'] == "CULTURAL_PERIOD.E55":
+                            if sb['label'] in self.period_lookup:
+                                cp = self.period_lookup[sb['label']]
+                            else:
+                                self.missing_labels.append((sb['entitytypeid'],sb['label']))
+                                print "missing period lookup:", sb['label']
+                                continue
+                            sb['label'] = cp['cp']
+                            self.make_row_from_entity(sb, advance_group=False)
+                            
+                            if cp['sp'] != "":
+                                mock_entity = {
+                                    "label":cp['sp'],
+                                    "businesstablename":"domains",
+                                    "entitytypeid":None
+                                }
+                                self.make_row_from_entity(mock_entity, v2node="CULTURAL_PERIOD_DETAIL_TYPE.E55")#,
+                                    #advance_group=False)
+                            else:
+                                self.advance_group()
 
-                    if sb['entitytypeid'] == "CULTURAL_PERIOD.E55":
-                        if sb['label'] in self.period_lookup:
-                            cp = self.period_lookup[sb['label']]
-                        else:
-                            self.missing_labels.append((sb['entitytypeid'],sb['label']))
-                            # print "missing period lookup:", sb['label']
-                            continue
-                        sb['label'] = cp['cp']
-                        self.make_row_from_entity(sb, advance_group=False)
-
-                        if cp['sp'] != "":
-                            mock_entity = {
-                                "label":cp['sp'],
-                                "businesstablename":"domains",
-                                "entitytypeid":None
-                            }
-                            self.make_row_from_entity(mock_entity, v2node="CULTURAL_PERIOD_DETAIL_TYPE.E55")
-                        else:
+                        
+                        elif sb['entitytypeid'] == "FEATURE_EVIDENCE_ASSIGNMENT.E17":
+                            for fea in sb['child_entities']:
+                                self.make_row_from_entity(fea, advance_group=False)
                             self.advance_group()
 
-                    
-                    elif sb['entitytypeid'] == "FEATURE_EVIDENCE_ASSIGNMENT.E17":
-                        for fea in sb['child_entities']:
-                            self.make_row_from_entity(fea, advance_group=False)
-                        self.advance_group()
+                        ## this is where the SITE_FUNCTION_TYPE and SITE_FUNCTION_CERTAINTY
+                        ## entities are pushed off to a completely separate branch.
+                        elif sb['entitytypeid'] == "FEATURE_EVIDENCE_INTERPRETATION_ASSIGNMENT.E17":
+                            for fei in sb['child_entities']:
+                                self.make_row_from_entity(fei, advance_group=False)
+                            self.advance_group()
 
-                    ## this is where the SITE_FUNCTION_TYPE and SITE_FUNCTION_CERTAINTY
-                    ## entities are pushed off to a completely separate branch.
-                    elif sb['entitytypeid'] == "FEATURE_EVIDENCE_INTERPRETATION_ASSIGNMENT.E17":
-                        for fei in sb['child_entities']:
-                            self.make_row_from_entity(fei, advance_group=False)
-                        self.advance_group()
+                        elif sb['entitytypeid'] == "TIME-SPAN_PHASE.E52":
+                            for fei in sb['child_entities']:
+                                self.has_extended_dates = True
 
-                    elif sb['entitytypeid'] == "TIME-SPAN_PHASE.E52":
-                        for fei in sb['child_entities']:
-                            self.has_extended_dates = True
-                            # self.errors.append(str(fei))
-                            # self.make_row_from_entity(fei, advance_group=False)
-                        # break
-                        # self.advance_group()
-                        
+                        else:
+                            msg = "WARNING - branch not accounted for PHASE_TYPE_ASSIGNMENT.E17 > {}".format(
+                                sb['entitytypeid'])
+                            self.errors.append(msg)
 
-                    else:
-                        msg = "WARNING - branch not accounted for PHASE_TYPE_ASSIGNMENT.E17 > {}".format(
-                            sb['entitytypeid'])
-                        self.errors.append(msg)
+            if entitytype == "MEASUREMENT_TYPE.E55":
+                used_tb.append(tb_entity)
+                self.make_row_from_entity(tb_entity, advance_group=False)
+                self.handle_one_nested(tb_entity['child_entities'][0])
 
         top_branches = [i for i in top_branches if not i in used_tb]
+        if len(top_branches) > 0:
+            print "UNHANDLED TOP BRANCHES:", [i['entitytypeid'] for i in top_branches]
