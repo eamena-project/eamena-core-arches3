@@ -259,7 +259,14 @@ class Entity(object):
 
         for child_entity in self.child_entities:
             child = child_entity._save()
-            rule = archesmodels.Rules.objects.get(entitytypedomain = entity.entitytypeid, entitytyperange = child.entitytypeid, propertyid = child_entity.property)
+            try:
+                rule = archesmodels.Rules.objects.get(entitytypedomain = entity.entitytypeid, entitytyperange = child.entitytypeid)#, propertyid = child_entity.property)
+            except archesmodels.Rules.DoesNotExist as e:
+                print "entitytypedomain:", entity.entitytypeid
+                print "entitytyperange:", child.entitytypeid
+                # print "propertyid:", child_entity.property
+                raise e
+                
             archesmodels.Relations.objects.create(entityiddomain = entity, entityidrange = child, ruleid = rule)
         
         return entity
