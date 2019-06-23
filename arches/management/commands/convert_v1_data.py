@@ -132,7 +132,7 @@ class Command(BaseCommand):
                 lines = o.readlines()
                 for i in lines:
                     justusethese.append(i.rstrip())
-            print "  count", len(justusethese)
+            print "  count", len(set(justusethese))
 
         extended_date_ct = 0
         print "preparing node name and label lookups..."
