@@ -199,16 +199,17 @@ class Command(BaseCommand):
                     for line in lines:
                         resource = json.loads(line)
                         allids.append(resource['entityid'])
-                        if self.verbose:
-                            print "=== new resource ==="
+
                         res = NewResource(resource,
                             node_lookup=nl,
                             label_lookup=ll,
                             period_lookup=cpl,
-                            label_transformations=lt
+                            label_transformations=lt,
+                            assessor_lookup=al
                         )
                         if self.verbose:
-                            print res.resid
+                            print "=== new resource ==> "+res.resid
+
                         res.make_rows()
                         for row in res.rows:
                             writer.writerow(row)
