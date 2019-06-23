@@ -275,7 +275,7 @@ class Command(BaseCommand):
                 print "  {} relations".format(len(relations))
         else:
             if self.verbose:
-                print "ceating blank relations file"
+                print "creating blank relations file"
 
         # check and convert concept ids if that's what's in the rr file
         for row in relations:
