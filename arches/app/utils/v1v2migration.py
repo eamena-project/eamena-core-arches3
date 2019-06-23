@@ -245,12 +245,23 @@ class NewResource():
         top_branches = self.data['child_entities']
         sft_ct, fea_ct = 0, 0
         used_tb = list()
+
         for tb_entity in top_branches:
 
             entitytype = tb_entity['entitytypeid']
             if len(tb_entity['child_entities']) == 0 and tb_entity['businesstablename'] != "":
-
-                self.make_row_from_entity(tb_entity)
+                # the site_id node is converted to a NAME.E41, and Designation is set as the
+                # NAME_TYPE.E55 node
+                if entitytype == "SITE_ID.E42":
+                    self.make_row_from_entity(tb_entity, advance_group=False)
+                    nametype_entity = {
+                        "label":"Designation",
+                        "businesstablename":"domains",
+                        "entitytypeid":"NAME_TYPE.E55"
+                    }
+                    self.make_row_from_entity(nametype_entity)
+                else:
+                    self.make_row_from_entity(tb_entity)
                 used_tb.append(tb_entity)
         
         
