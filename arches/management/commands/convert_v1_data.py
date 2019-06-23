@@ -29,6 +29,8 @@ class Command(BaseCommand):
             help="source v1 json file"),
         make_option('--slice', action='store', default=None,
             help="slice the list of resources"),
+        make_option('--id_list', action='store', default=None,
+            help="file that has a list of resource uuids to use"),
         make_option('--remove-eamena-ids', action='store_true', default=False,
             help="removes the eamena id of input resources so it won't be"\
                 "retained on load"),
@@ -47,7 +49,7 @@ class Command(BaseCommand):
             self.load_extra_nodes()
         else:
             self.convert_v1_json(options['source'],slice=options['slice'],
-                remove_ids=options['remove_eamena_ids'])
+                remove_ids=options['remove_eamena_ids'], ids_to_use_file=options['id_list'])
 
     def add_children_to_concept(self, model_entitytype, new_entitytype):
 
@@ -103,19 +105,14 @@ class Command(BaseCommand):
         self.add_children_to_concept("FUNCTION_TYPE.I4","SITE_FUNCTION_TYPE.I4")
         self.add_children_to_concept("FUNCTION_CERTAINTY.I6","SITE_FUNCTION_CERTAINTY.I6")
 
-    def load_json_resources(self, input_file, remove_ids=False):
+    def load_json_resources(self, input_file, remove_ids=False, justusethese=[]):
 
         with open(input_file, "rb") as openf:
             data = json.loads(openf.read())
         resources = data['resources']
 
-        # justusethese = [
-            # "5ec1ce35-2dcd-4b5b-8094-36f3e81349c7",
-            # "ebf8d2ba-c707-4718-8ecf-2d0c8fb186bb",
-            # "5fb1b6ca-4a64-406e-9e92-3d74e30e1188",
-            # "77a99c67-1494-4239-997e-5b054494c124"
-        # ]
-        # resources = [i for i in resources if i['entityid'] in justusethese]
+        if len(justusethese) > 0:
+            resources = [i for i in resources if i['entityid'] in justusethese]
 
         if remove_ids is True:
             for resource in resources:
@@ -125,7 +122,17 @@ class Command(BaseCommand):
 
         return resources
 
-    def convert_v1_json(self, input_file, slice=None, remove_ids=False):
+    def convert_v1_json(self, input_file, slice=None, remove_ids=False,
+            ids_to_use_file=None):
+
+        justusethese = list()
+        if ids_to_use_file is not None:
+            print "using uuid list from file"
+            with open(ids_to_use_file, "rb") as o:
+                lines = o.readlines()
+                for i in lines:
+                    justusethese.append(i.rstrip())
+            print "  count", len(justusethese)
 
         extended_date_ct = 0
         print "preparing node name and label lookups..."
@@ -143,7 +150,8 @@ class Command(BaseCommand):
         # original code used to parse the normal json file.
         if input_file.endswith(".json"):
             outrows = list()
-            resources = self.load_json_resources(input_file, remove_ids=remove_ids)
+            resources = self.load_json_resources(input_file, remove_ids=remove_ids,
+                justusethese=justusethese)
 
             # slice list if desired
             if not slice:
@@ -207,6 +215,9 @@ class Command(BaseCommand):
                             label_transformations=lt,
                             assessor_lookup=al
                         )
+                        if len(justusethese) > 0:
+                            if not res.resid in justusethese:
+                                continue
                         if self.verbose:
                             print "=== new resource ==> "+res.resid
 
