@@ -60,6 +60,9 @@ class Command(BaseCommand):
                         if label in label_lookup[entitytype]:
                             newid = label_lookup[entitytype][label].split("/")[-1]
                             entity['value'] = newid
+                        elif label == "resized":
+                            newid = label_lookup[entitytype]["other/unlisted"].split("/")[-1]
+                            entity['value'] = newid
                         else:
                             print "missing label:", label
                             for k,v in label_lookup[entitytype].items():
