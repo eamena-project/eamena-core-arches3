@@ -16,12 +16,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import os
 import datetime
 import re
 from django.conf import settings
 import uuid
 import types
 import copy
+import urllib
 import arches.app.models.models as archesmodels
 from arches.app.models.models import Strings
 from django.contrib.gis.db import models
@@ -255,6 +257,21 @@ class Entity(object):
                     themodelinstance.save()
                     self.value = themodelinstance.geturl()
                     self.label = themodelinstance.getname()
+                # this is some extra rough logic that was implemented during the v1-v2
+                # migration effort. During json load, file data was just stored as paths
+                # to the S3 bucket. To handle this, we download the file locally, open it,
+                # set it as a Django File object and then set the entity's values to it and save.
+                elif (isinstance(themodelinstance, archesmodels.Files)):
+                    tempfile_name = self.value.split("/")[-1]
+                    urllib.urlretrieve(self.value, tempfile_name)
+
+                    with open(tempfile_name, "r") as f:
+                        setattr(themodelinstance, columnname, File(f))
+                        themodelinstance.save()
+                    self.value = themodelinstance.geturl()
+                    self.label = themodelinstance.getname()
+
+                    os.remove(tempfile_name)
 
 
         for child_entity in self.child_entities:
