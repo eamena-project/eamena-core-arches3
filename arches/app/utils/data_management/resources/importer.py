@@ -181,7 +181,13 @@ class ResourceLoader(object):
                         legacyid_to_entityid[resource.resource_id] = master_graph.entityid
                     else:
                         new_resource = Resource(resource)
-                        new_resource.save(user=self.user, note=load_id, resource_uuid=new_resource.entityid)
+                        try:
+                            new_resource.save(user=self.user, note=load_id, resource_uuid=new_resource.entityid)
+                        except Exception as e:
+                            print 'Could not save resource {}.\nERROR: {}'.format(resource['entityid'],e)
+                            # with open(resource['entityid']+".json", "wb") as f:
+                                # json.dump(resource, f, indent=1)
+                            continue
                         new_resource = Resource().get(new_resource.entityid)
                         try:
                             new_resource.index()
