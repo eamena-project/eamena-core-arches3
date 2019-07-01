@@ -16,12 +16,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import os
 import datetime
 import re
 from django.conf import settings
 import uuid
 import types
 import copy
+import urllib
 import arches.app.models.models as archesmodels
 from arches.app.models.models import Strings
 from django.contrib.gis.db import models
@@ -137,7 +139,7 @@ class Entity(object):
           entity2.entityid = str(uuid.uuid4())
           entity2.save()
           rule = archesmodels.Rules.objects.get(entitytypedomain = self.entitytypeid, entitytyperange = entity2.entitytypeid)
-          archesmodels.Relations.objects.get_or_create(entityiddomain = archesmodels.Entities.objects.get(pk=self.entityid), entityidrange = entity2, ruleid = rule)
+          archesmodels.Relations.objects.create(entityiddomain = archesmodels.Entities.objects.get(pk=self.entityid), entityidrange = entity2, ruleid = rule)
           
         
         uniqueidmodel = self._get_model('uniqueids')
@@ -151,14 +153,10 @@ class Entity(object):
             uniqueidmodelinstance.val = str(num)
         else:
             try:
-                # make a list of all the ids for this id_type and cast them as integers
-                ids = [int(i.val) for i in archesmodels.UniqueIds.objects.filter(id_type=type)]
-                # get the highest one and then advance it to determine the new id
-                if len(ids) > 0:
-                    lastID = max(ids)
-                else:
-                    lastID = 0
-                IdInt = lastID + 1
+                last_uniqueid = archesmodels.UniqueIds.objects.filter(id_type=type).extra({
+                    'valint': "CAST(val as INT)"
+                }).latest('valint')
+                IdInt = int(last_uniqueid.val) + 1
                 uniqueidmodelinstance.val = str(IdInt)
 
             except ObjectDoesNotExist:
@@ -259,12 +257,34 @@ class Entity(object):
                     themodelinstance.save()
                     self.value = themodelinstance.geturl()
                     self.label = themodelinstance.getname()
+                # this is some extra rough logic that was implemented during the v1-v2
+                # migration effort. During json load, file data was just stored as paths
+                # to the S3 bucket. To handle this, we download the file locally, open it,
+                # set it as a Django File object and then set the entity's values to it and save.
+                elif (isinstance(themodelinstance, archesmodels.Files)):
+                    tempfile_name = self.value.split("/")[-1]
+                    urllib.urlretrieve(self.value, tempfile_name)
+
+                    with open(tempfile_name, "r") as f:
+                        setattr(themodelinstance, columnname, File(f))
+                        themodelinstance.save()
+                    self.value = themodelinstance.geturl()
+                    self.label = themodelinstance.getname()
+
+                    os.remove(tempfile_name)
 
 
         for child_entity in self.child_entities:
             child = child_entity._save()
-            rule = archesmodels.Rules.objects.get(entitytypedomain = entity.entitytypeid, entitytyperange = child.entitytypeid, propertyid = child_entity.property)
-            archesmodels.Relations.objects.get_or_create(entityiddomain = entity, entityidrange = child, ruleid = rule)
+            try:
+                rule = archesmodels.Rules.objects.get(entitytypedomain = entity.entitytypeid, entitytyperange = child.entitytypeid, propertyid = child_entity.property)
+            except archesmodels.Rules.DoesNotExist as e:
+                print "entitytypedomain:", entity.entitytypeid
+                print "entitytyperange:", child.entitytypeid
+                # print "propertyid:", child_entity.property
+                raise e
+                
+            archesmodels.Relations.objects.create(entityiddomain = entity, entityidrange = child, ruleid = rule)
         
         return entity
 

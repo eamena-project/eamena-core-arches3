@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 import csv
 import datetime
 from time import time
@@ -22,6 +23,9 @@ from formats.archesfile import ArchesReader
 from formats.archesjson import JsonReader
 from formats.shpfile import ShapeReader
 from django.core.exceptions import ObjectDoesNotExist
+
+# def resource_list_chunk_to_entities_wrapper(args):
+    # return ResourceLoader.resource_list_chunk_to_entities(*args)
 
 class ResourceLoader(object):
 
@@ -51,12 +55,29 @@ class ResourceLoader(object):
         elif file_format == '.arches':
             reader = ArchesReader()
             print '\nVALIDATING ARCHES FILE ({0})'.format(source)
-            reader.validate_file(source)
+            # reader.validate_file(source)
         elif file_format == '.json':
             archesjson = True
             reader = JsonReader()
             print '\nVALIDATING JSON FILE ({0})'.format(source)
             reader.validate_file(source)
+        elif file_format == '.jsonl':
+            archesjson = True
+            reader = JsonReader()
+            print '\nNO VALIDATION USED ON JSONL FILE ({0})'.format(source)
+            d = datetime.datetime.now()
+            load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
+                d.hour, d.minute, d.microsecond)
+            loaded_ct = 0
+            with open(source, "rb") as openf:
+                lines = openf.readlines()
+                for line in lines:
+                    resource = json.loads(line)
+                    result = self.resource_list_to_entities([resource], True, False,
+                        filename=os.path.basename(source), load_id=load_id
+                    )
+                    loaded_ct += 1
+            return {"count":loaded_ct}
 
         start = time()
         resources = reader.load_file(source)
@@ -88,13 +109,20 @@ class ResourceLoader(object):
         return results
 
         #self.se.bulk_index(self.resources)
+    
+    # def resource_list_chunk_to_entities():
+        
 
 
-    def resource_list_to_entities(self, resource_list, archesjson=False, append=False, filename=''):
+    def resource_list_to_entities(self, resource_list, archesjson=False, append=False, filename='',
+                                  load_id=None):
         '''Takes a collection of imported resource records and saves them as arches entities'''
         start = time()
         d = datetime.datetime.now()
-        load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day, d.hour, d.minute, d.microsecond) #Should we append the timestamp to the exported filename?
+
+        if load_id is None:
+            load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
+                d.hour, d.minute, d.microsecond) #Should we append the timestamp to the exported filename?
 
         ret = {'successfully_saved':0, 'failed_to_save':[], 'load_id': load_id}
         schema = None
@@ -102,52 +130,84 @@ class ResourceLoader(object):
         legacyid_to_entityid = {}
         errors = []
         progress_interval = 250
-        for count, resource in enumerate(resource_list):
+        
+        def chunks(l, n):
+            """Yield successive n-sized chunks from l. Thanks to:
+            https://stackoverflow.com/a/312464/3873885"""
+            for i in xrange(0, len(l), n):
+                yield l[i:i + n]
 
-            if count >= progress_interval and count % progress_interval == 0:
-                print count, 'of', len(resource_list), 'loaded'
+        elapsed = 0
+        chunktimes = list()
+        for m, resource_list_chunk in enumerate(chunks(resource_list, progress_interval)):
+            startchunk = time()
+            multiplier = m + 1
+            with transaction.atomic():
+                for count, resource in enumerate(resource_list_chunk):
+                    real_ct = count + 1
+                    if archesjson == False:
+                        masterGraph = None
+                        if current_entitiy_type != resource.entitytypeid:
+                            schema = Resource.get_mapping_schema(resource.entitytypeid)
+                            current_entitiy_type = resource.entitytypeid
 
-            if archesjson == False:
-                masterGraph = None
-                if current_entitiy_type != resource.entitytypeid:
-                    schema = Resource.get_mapping_schema(resource.entitytypeid)
+                        master_graph = self.build_master_graph(resource, schema)
+                        self.pre_save(master_graph)
 
-                master_graph = self.build_master_graph(resource, schema)
-                self.pre_save(master_graph)
+                        try:
+                            uuid.UUID(resource.resource_id)
+                            entityid = resource.resource_id
+                        except ValueError:
+                            entityid = ''
 
-                try:
-                    uuid.UUID(resource.resource_id)
-                    entityid = resource.resource_id
-                except(ValueError):
-                    entityid = ''
-                    
-                if append == True:
-                  try:
-                      resource_to_delete = Resource(entityid)
-                      resource_to_delete.delete_index()
-                  except ObjectDoesNotExist:
-                      print 'Entity ',entityid,' does not exist. Nothing to delete'          
+                        if append:
+                            try:
+                                resource_to_delete = Resource(entityid)
+                                resource_to_delete.delete_index()
+                            except ObjectDoesNotExist:
+                                print 'Entity ',entityid,' does not exist. Nothing to delete'
+                        
+                        try:
+                            master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
+                        except Exception as e:
+                            print 'Could not save resource {}.\nERROR: {}'.format(master_graph.entityid,e)
+                        resource.entityid = master_graph.entityid
+                        #new_resource = Resource().get(resource.entityid)
+                        #assert new_resource == master_graph
+                        try:
+                            master_graph.index()
+                        except Exception as e:
+                            print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
+                        legacyid_to_entityid[resource.resource_id] = master_graph.entityid
+                    else:
+                        new_resource = Resource(resource)
+                        try:
+                            new_resource.save(user=self.user, note=load_id, resource_uuid=new_resource.entityid)
+                        except Exception as e:
+                            print 'Could not save resource {}.\nERROR: {}'.format(resource['entityid'],e)
+                            # with open(resource['entityid']+".json", "wb") as f:
+                                # json.dump(resource, f, indent=1)
+                            continue
+                        new_resource = Resource().get(new_resource.entityid)
+                        try:
+                            new_resource.index()
+                        except Exception as e:
+                            print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
+                        legacyid_to_entityid[new_resource.entityid] = new_resource.entityid
 
-                master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
-                resource.entityid = master_graph.entityid
-                new_resource = Resource().get(resource.entityid)
-                try:
-                    new_resource.index()
-                except Exception as e:
-                    print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
-                legacyid_to_entityid[resource.resource_id] = master_graph.entityid
+                    ret['successfully_saved'] += 1
+            endchunk = time() - startchunk
+
+            chunktimes.append(endchunk)
+            chunktime_avg = sum(chunktimes)/len(chunktimes)
+            remtime = ((len(resource_list) - (multiplier*progress_interval))*chunktime_avg/progress_interval)/60
+            if real_ct == progress_interval:
+                print "{} of {} loaded in {}m. remaining time estimate: {}m".format(
+                    progress_interval*multiplier, len(resource_list), round(sum(chunktimes)/60, 2),
+                    round(remtime, 2))
+
             else:
-                new_resource = Resource(resource)
-                new_resource.save(user=self.user, note=load_id, resource_uuid=new_resource.entityid)
-                new_resource = Resource().get(new_resource.entityid)
-                try:
-                    new_resource.index()
-                except:
-                    print 'Could not index resource. This may be because the valueid of a concept is not in the database.'
-                legacyid_to_entityid[new_resource.entityid] = new_resource.entityid
-
-            ret['successfully_saved'] += 1
-
+                print progress_interval*multiplier+real_ct
 
         ret['legacyid_to_entityid'] = legacyid_to_entityid
         elapsed = (time() - start)

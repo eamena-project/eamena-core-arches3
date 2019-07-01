@@ -343,6 +343,8 @@ class Resource(Entity):
         document.numbers = []
 
         for entity in self.flatten():
+            if entity.value == "":
+                continue
             if entity.entityid != self.entityid:
                 if entity.businesstablename == 'domains':
                     value = archesmodels.Values.objects.get(pk=entity.value)
@@ -370,6 +372,8 @@ class Resource(Entity):
         """
         
         for entity in child_entities:
+            if entity.value == "":
+                continue
             if entity.businesstablename == 'domains':
                 value = archesmodels.Values.objects.get(pk=entity.value)
                 entity.conceptid = value.conceptid_id

@@ -17,7 +17,7 @@ from arches.app.models.concept import Concept
 from arches.app.models.models import ConceptRelations, Entities, EntityTypes, Concepts, Values
 
 logdir = os.path.join(settings.PACKAGE_ROOT,"logs")
-logfile = os.path.join(logdir,"v1_conversion_general_log.txt")
+logfile = os.path.join(logdir,"v1_conversion_general_log.csv")
 missed_labels_file = os.path.join(logdir,"v1_conversion_missing_labels.csv")
 
 class Command(BaseCommand):
@@ -29,6 +29,8 @@ class Command(BaseCommand):
             help="source v1 json file"),
         make_option('--slice', action='store', default=None,
             help="slice the list of resources"),
+        make_option('--id_list', action='store', default=None,
+            help="file that has a list of resource uuids to use"),
         make_option('--remove-eamena-ids', action='store_true', default=False,
             help="removes the eamena id of input resources so it won't be"\
                 "retained on load"),
@@ -47,7 +49,7 @@ class Command(BaseCommand):
             self.load_extra_nodes()
         else:
             self.convert_v1_json(options['source'],slice=options['slice'],
-                remove_ids=options['remove_eamena_ids'])
+                remove_ids=options['remove_eamena_ids'], ids_to_use_file=options['id_list'])
 
     def add_children_to_concept(self, model_entitytype, new_entitytype):
 
@@ -103,19 +105,14 @@ class Command(BaseCommand):
         self.add_children_to_concept("FUNCTION_TYPE.I4","SITE_FUNCTION_TYPE.I4")
         self.add_children_to_concept("FUNCTION_CERTAINTY.I6","SITE_FUNCTION_CERTAINTY.I6")
 
-    def load_json_resources(self, input_file, remove_ids=False):
+    def load_json_resources(self, input_file, remove_ids=False, justusethese=[]):
 
         with open(input_file, "rb") as openf:
             data = json.loads(openf.read())
         resources = data['resources']
 
-        # justusethese = [
-            # "5ec1ce35-2dcd-4b5b-8094-36f3e81349c7",
-            # "ebf8d2ba-c707-4718-8ecf-2d0c8fb186bb",
-            # "5fb1b6ca-4a64-406e-9e92-3d74e30e1188",
-            # "77a99c67-1494-4239-997e-5b054494c124"
-        # ]
-        # resources = [i for i in resources if i['entityid'] in justusethese]
+        if len(justusethese) > 0:
+            resources = [i for i in resources if i['entityid'] in justusethese]
 
         if remove_ids is True:
             for resource in resources:
@@ -125,63 +122,140 @@ class Command(BaseCommand):
 
         return resources
 
-    def convert_v1_json(self, input_file, slice=None, remove_ids=False):
+    def convert_v1_json(self, input_file, slice=None, remove_ids=False,
+            ids_to_use_file=None):
 
+        justusethese = list()
+        if ids_to_use_file is not None:
+            print "using uuid list from file"
+            with open(ids_to_use_file, "rb") as o:
+                lines = o.readlines()
+                for i in lines:
+                    justusethese.append(i.rstrip())
+            print "  count", len(set(justusethese))
+
+        extended_date_ct = 0
         print "preparing node name and label lookups..."
         nl = self.load_lookup()
         ll = self.make_full_label_lookup("HERITAGE_PLACE.E27")
-        # print ll
-        # exit()
         cpl = self.load_cultural_period_lookup()
         lt = self.load_label_transformations()
+        al = self.load_assessor_lookup()
 
         print "   done."
-        outrows = list()
-        resources = self.load_json_resources(input_file, remove_ids=remove_ids)
 
-        # slice list if desired
-        if not slice:
-            s, e = None, None
-        else:
-            s, e = slice.split(":")
-            s = int(s) if s != "" else None
-            e = int(e) if e != "" else None
+        extended_date_resources = list()
+        all_assessor_uuids = list()
 
-        use_these = resources[s:e]
-        allids = [i['entityid'] for i in use_these]
-        print "converting {} resources".format(len(use_these))
+        # original code used to parse the normal json file.
+        if input_file.endswith(".json"):
+            outrows = list()
+            resources = self.load_json_resources(input_file, remove_ids=remove_ids,
+                justusethese=justusethese)
 
-        errors = list()
-        missing_labels = list()
-        for resource in use_these:
-            if self.verbose:
-                print "=== new resource ==="
-            res = NewResource(resource,
-                node_lookup=nl,
-                label_lookup=ll,
-                period_lookup=cpl,
-                label_transformations=lt
-            )
-            if self.verbose:
-                print res.resid
-            res.make_rows()
-            outrows += res.rows
-            if len(res.errors) > 0:
-                errors.append("Resource ID: {}".format(res.resid))
-                errors += res.errors
-            missing_labels += res.missing_labels
+            # slice list if desired
+            if not slice:
+                s, e = None, None
+            else:
+                s, e = slice.split(":")
+                s = int(s) if s != "" else None
+                e = int(e) if e != "" else None
 
-        out_arches = input_file.replace(".json","-v2.arches")
-        self.write_arches_file(outrows, outname=out_arches)
+            use_these = resources[s:e]
+            allids = [i['entityid'] for i in use_these]
+            print "converting {} resources".format(len(use_these))
 
-        orig_relations = input_file.replace(".json","_resource_relationships.csv")
+            errors = list()
+            missing_labels = list()
+            for resource in use_these:
+                if self.verbose:
+                    print "=== new resource ==="
+                res = NewResource(resource,
+                    node_lookup=nl,
+                    label_lookup=ll,
+                    period_lookup=cpl,
+                    label_transformations=lt,
+                    assessor_lookup=al
+                )
+                if self.verbose:
+                    print res.resid
+                res.make_rows()
+                outrows += res.rows
+
+                if res.has_extended_dates:
+                    extended_date_ct += 1
+                if len(res.errors) > 0:
+                    errors.append("Resource ID: {}".format(res.resid))
+                    errors += res.errors
+                missing_labels += res.missing_labels
+
+            out_arches = input_file.replace(".json","-v2.arches")
+            self.write_arches_file(outrows, outname=out_arches)
+
+        # new and improved code to handle jsonl files
+        elif input_file.endswith(".jsonl"):
+            allids = list()
+            errors = list()
+            missing_labels = list()
+            out_arches = input_file.replace(".jsonl","-v2.arches")
+            with open(out_arches, "wb") as openout:
+                writer = unicodecsv.writer(openout, delimiter="|")
+                writer.writerow(['RESOURCEID', 'RESOURCETYPE', 'ATTRIBUTENAME', 'ATTRIBUTEVALUE', 'GROUPID'])
+                with open(input_file, "rb") as openin:
+                    lines = openin.readlines()
+
+                    for line in lines:
+                        resource = json.loads(line)
+                        allids.append(resource['entityid'])
+
+                        res = NewResource(resource,
+                            node_lookup=nl,
+                            label_lookup=ll,
+                            period_lookup=cpl,
+                            label_transformations=lt,
+                            assessor_lookup=al
+                        )
+                        if len(justusethese) > 0:
+                            if not res.resid in justusethese:
+                                continue
+                        if self.verbose:
+                            print "=== new resource ==> "+res.resid
+
+                        res.make_rows()
+                        for row in res.rows:
+                            writer.writerow(row)
+
+                        if res.has_extended_dates:
+                            extended_date_resources.append(res)
+                        for assessor in res.assessor_uuids:
+                            all_assessor_uuids.append(assessor)
+                        for err in res.errors:
+                            errors.append((res.resid, err))
+                        missing_labels += res.missing_labels
+
+        orig_relations = os.path.splitext(input_file)[0] + "_resource_relationships.csv"
         out_relations = out_arches.replace(".arches",".relations")
         self.convert_or_create_relations(orig_relations, out_relations, resids=allids)
+        
+        if len(extended_date_resources) > 0:
+            exdaterows = list()
+            for r in extended_date_resources:
+                for rr in r.rows:
+                    exdaterows.append(rr)
+            self.write_arches_file(exdaterows, outname="extended_date_resources.arches")
+
+        if len(all_assessor_uuids) > 0:
+            with open("assessor_uuids.csv", "wb") as opena:
+                opena.write("assessor id\n")
+                for au in set(all_assessor_uuids):
+                    opena.write(au+"\n")
 
         if len(errors) > 0:
             with open(logfile, "wb") as openf:
+                writer = unicodecsv.writer(openf)
+                writer.writerow(("resourceid","msg"))
                 for e in errors:
-                    openf.write(e.encode("utf-8")+os.linesep)
+                    writer.writerow(e)
             print "errors written to", logfile
 
         if len(missing_labels) > 0:
@@ -213,7 +287,7 @@ class Command(BaseCommand):
                 print "  {} relations".format(len(relations))
         else:
             if self.verbose:
-                print "ceating blank relations file"
+                print "creating blank relations file"
 
         # check and convert concept ids if that's what's in the rr file
         for row in relations:
@@ -242,7 +316,7 @@ class Command(BaseCommand):
     def load_cultural_period_lookup(self):
 
         lookupdir = os.path.join(settings.ROOT_DIR,"app","utils","v1v2lookups")
-        f = os.path.join(lookupdir, "Cultural_Period_v1-v2_Translation-Egypt.csv")
+        f = os.path.join(lookupdir, "Cultural_Period_v1-v2_Translation.csv")
         lookup = dict()
         with open(f, "rb") as openf:
             reader = unicodecsv.reader(openf)
@@ -285,6 +359,19 @@ class Command(BaseCommand):
 
         return lookup
 
+    def load_assessor_lookup(self):
+
+        lookupdir = os.path.join(settings.ROOT_DIR,"app","utils","v1v2lookups")
+        f = os.path.join(lookupdir, "MainDB_Assessor_Lookup.csv")
+        lookup = dict()
+        with open(f, "rb") as openf:
+            reader = unicodecsv.reader(openf)
+            reader.next()
+            for row in reader:
+                lookup[row[0]] = row[1]
+
+        return lookup
+
     def make_full_label_lookup(self, restype):
 
         q = Entity().get_mapping_schema(restype)
@@ -293,24 +380,24 @@ class Command(BaseCommand):
         outdict = {}
         for node_name in restypenodes:
             node_obj = EntityTypes.objects.get(pk=node_name)
+
             if node_obj.businesstablename == "domains":
                 outdict[node_name] = self.get_label_lookup(node_obj.conceptid_id)
+
+        with open("full_label_lookup.json", 'wb') as out:
+            json.dump(outdict, out, indent=1)
         return outdict
 
     def get_label_lookup(self, conceptid, return_entity=False):
 
         all_concepts = self.collect_concepts(conceptid,full_concept_list=[])
-        # print " ", len(all_concepts)
+
         ## dictionary will hold {label:concept.legacyoid} or {label:valueid}
         label_lookup = {}
         for c in all_concepts:
             cobj = Concepts.objects.get(pk=c)
             labels = Values.objects.filter(conceptid_id=c,valuetype_id="prefLabel")
             for label in labels:
-                # try:
-                    # print label.value
-                # except Exception as e:
-                    # print str(e)
                 if return_entity:
                     label_lookup[label.value.lower()] = label.valueid
                 else:
@@ -319,16 +406,13 @@ class Command(BaseCommand):
         return label_lookup
 
     def collect_concepts(self, node_conceptid, full_concept_list = []):
-        ''' Collects a full list of child concepts given the conceptid of the node. Returns a list of a set of concepts, i.e. expounding the duplicates'''
+        ''' Collects a full list of child concepts given the conceptid of the node.
+        Returns a list of a set of concepts, i.e. expounding the duplicates'''
         concepts_in_node = ConceptRelations.objects.filter(conceptidfrom = node_conceptid)
-        # if node_conceptid == "4e86ecd2-5d33-11e9-9dec-5fb62f82c54b":
-            # print len(concepts_in_node)
         if concepts_in_node.count() > 0:
             full_concept_list.append(node_conceptid)
             for concept_in_node in concepts_in_node:
-                # full_concept_list.append(concept_in_node.conceptidto_id)
                 self.collect_concepts(concept_in_node.conceptidto_id, full_concept_list)
         else:
-            # print node_conceptid
             full_concept_list.append(node_conceptid)
         return list(set(full_concept_list))

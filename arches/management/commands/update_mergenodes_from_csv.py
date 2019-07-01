@@ -49,9 +49,7 @@ class Command(BaseCommand):
 
         for node, mergenode in node_data.iteritems():
             mapping = Mappings.objects.get(entitytypeidfrom=entitytypeid,entitytypeidto=node)
-            
             if mapping.mergenodeid != mergenode:
-                print "{} altering mergenode".format(node)
                 print "  {} --> {}".format(mapping.mergenodeid, mergenode)
                 mapping.mergenodeid = mergenode
                 mapping.save()

@@ -10,6 +10,7 @@ DISTURBANCE_CAUSE_CATEGORY_TYPE.E55,Religious,Religious Activities
 DISTURBANCE_CAUSE_CATEGORY_TYPE.E55,Public,Public/Institutional Use
 DISTURBANCE_CAUSE_CATEGORY_TYPE.E55,Development,Building and Development
 DISTURBANCE_CAUSE_CATEGORY_TYPE.E55,Entertainment/Leisure,Social/Cultural Uses of Heritage
+DISTURBANCE_CAUSE_CATEGORY_TYPE.E55,Public/Institutional,Public/Institutional Use
 DISTURBANCE_CAUSE_TYPE.I4,Vegetation/Crops,Vegetation/Crops/Trees
 DISTURBANCE_CAUSE_TYPE.I4,Trees,Vegetation/Crops/Trees
 DISTURBANCE_CAUSE_TYPE.I4,Demolition,Demolition/Destruction
@@ -18,6 +19,7 @@ DISTURBANCE_CAUSE_TYPE.I4,Water Recession,Recession of Water
 FUNCTION_TYPE.I4,Public,Public/Institutional
 THREAT_CATEGORY.I4,عام ,استخدام عام/ استخدام مؤسسي 
 THREAT_CATEGORY.I4,Public,Public/Institutional Use
+THREAT_CATEGORY.I4,Public/Institutional,Public/Institutional Use
 THREAT_CATEGORY.I4,Entertainment/Leisure,Social/Cultural Uses of Heritage
 THREAT_CATEGORY.I4,Development,Building and Development
 THREAT_CATEGORY.I4,Trade/Commercial,Trade/Commercial Use
@@ -26,6 +28,7 @@ THREAT_CATEGORY.I4,Military,Military/Armed Conflict
 THREAT_CATEGORY.I4,Religious,Religious Activities
 THREAT_CATEGORY.I4,Looting,Looting/Illegal Activities
 THREAT_CATEGORY.I4,Hydrological,Hydraulic Use
+THREAT_TYPE.I4,Tunelling,Tunneling
 THREAT_TYPE.I4,Vegetation/Crops,Vegetation/Crops/Trees
 THREAT_TYPE.I4,Irrigation ,Irrigation (Unclassified)
 THREAT_TYPE.I4,Trees,Vegetation/Crops/Trees
@@ -45,3 +48,4 @@ EFFECT_TYPE_4.I4,Loss of Archaeological Material,Loss/Removal of Archaeological 
 EFFECT_TYPE_5.I4,Erosion,Erosion/Deterioration
 EFFECT_TYPE_5.I4,Loss of Archaeological Material,Loss/Removal of Archaeological Material
 SITE_FUNCTION_TYPE.I4,Public,Public/Institutional
+INTERPRETATION_TYPE.I4,Gateway/Arch/Intersection ,Gateway/Arch/Intersection
