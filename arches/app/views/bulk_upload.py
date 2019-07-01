@@ -151,7 +151,10 @@ def import_archesfile(request):
 
     fpath = request.POST.get('filepath','')
     fullpath = os.path.join(settings.BULK_UPLOAD_DIR,fpath)
-    append = request.POST.get('append', 'false')
+
+    convert = {'false':False,'true':True}
+    append = convert[request.POST.get('append', 'false')]
+
     restype = request.POST.get('restype', '')
 
     output = StringIO()
@@ -172,10 +175,12 @@ def import_archesfile(request):
                          run_internal=True,
                          stdout=output,
                          )
+        val = output.getvalue().strip()
+
     except Exception as e:
         print e
+        val = {"error":e}
 
-    val = output.getvalue().strip()
     return HttpResponse(json.dumps(val), content_type="application/json")
 
 def upload_attachments(request):
