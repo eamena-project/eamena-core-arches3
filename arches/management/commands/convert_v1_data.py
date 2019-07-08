@@ -145,7 +145,7 @@ class Command(BaseCommand):
         print "   done."
 
         extended_date_resources = list()
-        all_assessor_uuids = list()
+        date_assessed_resources = list()
 
         # original code used to parse the normal json file.
         if input_file.endswith(".json"):
@@ -222,13 +222,14 @@ class Command(BaseCommand):
                             print "=== new resource ==> "+res.resid
 
                         res.make_rows()
+                        res.test_business_data_ct()
                         for row in res.rows:
                             writer.writerow(row)
 
                         if res.has_extended_dates:
                             extended_date_resources.append(res)
-                        for assessor in res.assessor_uuids:
-                            all_assessor_uuids.append(assessor)
+                        if res.has_date_assessed:
+                            date_assessed_resources.append(res)
                         for err in res.errors:
                             errors.append((res.resid, err))
                         missing_labels += res.missing_labels
@@ -236,25 +237,23 @@ class Command(BaseCommand):
         orig_relations = os.path.splitext(input_file)[0] + "_resource_relationships.csv"
         out_relations = out_arches.replace(".arches",".relations")
         self.convert_or_create_relations(orig_relations, out_relations, resids=allids)
-        
-        if len(extended_date_resources) > 0:
-            exdaterows = list()
-            for r in extended_date_resources:
-                for rr in r.rows:
-                    exdaterows.append(rr)
-            self.write_arches_file(exdaterows, outname="extended_date_resources.arches")
 
-        if len(all_assessor_uuids) > 0:
-            with open("assessor_uuids.csv", "wb") as opena:
-                opena.write("assessor id\n")
-                for au in set(all_assessor_uuids):
-                    opena.write(au+"\n")
+        if len(extended_date_resources) > 0:
+            with open("E27_with_extended_dates.jsonl", "wb") as openf:
+                for r in extended_date_resources:
+                    openf.write(json.dumps(r.data)+"\n")
+
+        if len(date_assessed_resources) > 0:
+            with open("E27_with_DATE_CONDITION_ASSESSED.E49.jsonl", "wb") as openf:
+                for r in date_assessed_resources:
+                    openf.write(json.dumps(r.data)+"\n")
 
         if len(errors) > 0:
             with open(logfile, "wb") as openf:
                 writer = unicodecsv.writer(openf)
                 writer.writerow(("resourceid","msg"))
                 for e in errors:
+                    # print e
                     writer.writerow(e)
             print "errors written to", logfile
 
