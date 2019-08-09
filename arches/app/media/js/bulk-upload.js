@@ -70,6 +70,7 @@ $( document ).ready(function() {
     
     var filepath = '';
     var archesFilepath = '';
+    var resCt = 0
     var formdata = new FormData();
     var xhr = null;
     var load_id = '';
@@ -257,7 +258,10 @@ $( document ).ready(function() {
                 data: setValPostData(test,filePath),
                 success: function(result) {
                     displayResults(result,test)
-                    if (!result.success) {passed = false} else {archesFilepath = result.filepath;};
+                    if (!result.success) {passed = false} else {
+                        archesFilepath = result.filepath;
+                        resCt = result.resource_count;
+                    };
                 }
             });
         }
@@ -269,9 +273,8 @@ $( document ).ready(function() {
                 $('#validation-msg').css("color","green");
                 $('#validation-msg').text("Validation complete. All tests passed.");
                 $('#import-msg').css("color","green");
-                $('#import-msg').text("Ready to load.");
+                $('#import-msg').text("Ready to load. Resource count: "+resCt);
                 formdata.append('archesfile', archesFilepath)
-                
             } else {
                 $('#validate-load-mask').hide();
                 $('#validation-msg').css("color","red");
@@ -295,7 +298,14 @@ $( document ).ready(function() {
     $('#load-data-button').click( function () {
         $('#import-msg').css("color","orange");
         $('#import-msg').text("Importing data... this may take a while.");
-        $('#full-load-mask').show();
+        if (resCt > 50) {
+            window.alert("With a high resource count (> 50) \
+this operation may time out, but, your resources will \
+still load. You'll now be redirected to the bulk upload home page where\
+you will be able to see your load recorded once it is finished.")
+            window.location.href = $("#bulk-url").attr("data-url");
+        }
+        $('#validate-load-mask').show();
         $.ajax({
             beforeSend: function(request) {
                 request.setRequestHeader("X-CSRFToken",csrftoken);
