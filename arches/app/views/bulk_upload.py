@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import os
 import json
 import time
+import unicodecsv
 from StringIO import StringIO
 from django import forms
 from django.conf import settings
@@ -120,6 +121,15 @@ def validate(request):
     if "Has attachments" in out.getvalue():
         result['hasfiles'] = True
 
+    if valtype == "write_arches_file":
+        resource_ids = []
+        with open(destpath, "rb") as f:
+            reader = unicodecsv.reader(f, delimiter="|")
+            reader.next()
+            for row in reader:
+                resource_ids.append(row[0])
+        resource_count = len(set(resource_ids))
+        result['resource_count'] = resource_count
     return HttpResponse(json.dumps(result), content_type="application/json")
     
 def upload_spreadsheet(request):
