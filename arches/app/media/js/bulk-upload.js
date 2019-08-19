@@ -112,16 +112,7 @@ $( document ).ready(function() {
         $('#validate-load-mask').show();
         $('#cancel-button').removeAttr('disabled');
         $('.log-line').remove();
-        
-        var testList = new Array(
-            'headers',
-            'rows_and_values',
-            'dates',
-            // 'geometries',
-            // 'concepts',
-            // 'files'
-        );
-        var testCt = testList.length
+
         var passed = true;
         function headers () {
             test = 'headers';
