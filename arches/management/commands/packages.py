@@ -67,7 +67,8 @@ class Command(BaseCommand):
         make_option('-f', '--format', action='store', dest='format', default='arches',
             help='Format: shp or arches'),
         make_option('-l', '--load_id', action='store', dest='load_id', default=None,
-            help='Text string identifying the resources in the data load you want to delete.'),
+            help='Text string identifying the resources in the data load you want to delete. Or,'\
+                 ' if passed during a load command, it will be used as the load_id for the load.'),
         make_option('-d', '--dest_dir', action='store', dest='dest_dir',
             help='Directory where you want to save exported files.'),
         make_option('-a', '--append', action='store_true', dest='appending',
@@ -87,7 +88,7 @@ class Command(BaseCommand):
         make_option('--user_id', action='store', type=int, default=None,
             help='specify a userid for the remove resources command, this is an integer.'),
         make_option('--force', action='store_true', default=None,
-            help='runs the given command with no user confirmation prompt')
+            help='runs the given command with no user confirmation prompt'),
     )
 
     def handle(self, *args, **options):
@@ -117,7 +118,8 @@ class Command(BaseCommand):
             self.build_permissions()
 
         if options['operation'] == 'load_resources':
-            self.load_resources(package_name, options['source'], options['appending'], options['run_internal'])
+            self.load_resources(package_name, options['source'], options['appending'], options['run_internal'],
+                load_id=options['load_id'])
             
         if options['operation'] == 'remove_resources':
             force = options['force']
@@ -350,7 +352,7 @@ class Command(BaseCommand):
                 Permission.objects.get_or_create(codename='read_%s' % entitytype, name='%s - read' % entitytype , content_type=content_type[0])
                 Permission.objects.get_or_create(codename='delete_%s' % entitytype, name='%s - delete' % entitytype , content_type=content_type[0])
 
-    def load_resources(self, package_name, data_source=None, appending = False, run_internal=False):
+    def load_resources(self, package_name, data_source=None, appending = False, run_internal=False, load_id=None):
         """
         Runs the setup.py file found in the package root
 
@@ -358,7 +360,10 @@ class Command(BaseCommand):
         data_source = None if data_source == '' else data_source
         module = import_module('%s.setup' % package_name)
         load = getattr(module, 'load_resources')
-        results = ResourceLoader().load(data_source, appending)
+
+        if load_id is None:
+            load_id = make_load_id()
+        results = ResourceLoader().load(data_source, appending, load_id=load_id)
         if run_internal:
             self.stdout.write(json.dumps(results))
 

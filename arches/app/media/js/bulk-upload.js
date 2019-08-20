@@ -70,10 +70,10 @@ $( document ).ready(function() {
     
     var filepath = '';
     var archesFilepath = '';
+    var loadId = '';
     var resCt = 0
     var formdata = new FormData();
     var xhr = null;
-    var load_id = '';
 
     'use strict';
     var csrftoken = $("[name=csrfmiddlewaretoken]").val();
@@ -252,6 +252,7 @@ $( document ).ready(function() {
                     if (!result.success) {passed = false} else {
                         archesFilepath = result.filepath;
                         resCt = result.resource_count;
+                        loadId = result.load_id
                     };
                 }
             });
@@ -264,7 +265,7 @@ $( document ).ready(function() {
                 $('#validation-msg').css("color","green");
                 $('#validation-msg').text("Validation complete. All tests passed.");
                 $('#import-msg').css("color","green");
-                $('#import-msg').text("Ready to load. Resource count: "+resCt);
+                $('#import-msg').text("Ready to load. Resource count: "+resCt+" Load ID: "+loadId);
                 formdata.append('archesfile', archesFilepath)
             } else {
                 $('#validate-load-mask').hide();
@@ -278,6 +279,28 @@ $( document ).ready(function() {
 
     });
 
+    $('#check-status-button').click( function () {
+        $.ajax({
+            beforeSend: function(request) {
+                request.setRequestHeader("X-CSRFToken",csrftoken);
+            },
+            url: '/bulk-upload/check-status',
+            type: 'post',
+            data: {'load_id': loadId},
+            success: function(result) {
+                console.log(result);
+                if (result.finished == true) {
+                    $('#import-msg').css("color", "green");
+                    $('#import-msg').text("Resources imported");
+                    $('#validate-load-mask').hide();
+                    if (!$('#folder-upload-div').is(":visible")) {
+                        window.location.href = $("#bulk-url").attr("data-url");
+                    }
+                } else { $('#import-msg').text("Still working...") };
+            }
+        });
+    });
+
     $('#cancel-button').click( function () {
         xhr.abort();
         $('#cancel-button').disabled = true;
@@ -286,17 +309,13 @@ $( document ).ready(function() {
         $('#validation-msg').text("Validation canceled.");
         $('.log-line').remove();
     });
+
+
     $('#load-data-button').click( function () {
         $('#import-msg').css("color","orange");
         $('#import-msg').text("Importing data... this may take a while.");
-        if (resCt > 50) {
-            window.alert("With a high resource count (> 50) \
-this operation may time out, but, your resources will \
-still load. You'll now be redirected to the bulk upload home page where\
-you will be able to see your load recorded once it is finished.")
-            window.location.href = $("#bulk-url").attr("data-url");
-        }
         $('#validate-load-mask').show();
+        $('#check-status-button').removeAttr('disabled');
         $.ajax({
             beforeSend: function(request) {
                 request.setRequestHeader("X-CSRFToken",csrftoken);
@@ -304,18 +323,20 @@ you will be able to see your load recorded once it is finished.")
             url: '/bulk-upload/import',
             type: 'post',
             data: {
+                'load_id': loadId,
                 'filepath':archesFilepath,
                 'append':$('#append-select').val(),
                 'restype': $('#resource-type-select').val()
             },
             success: function(result) {
+                $('#validate-load-mask').hide();
                 let res = JSON.parse(result);
                 if (res.errors) {
                     console.log("python errors:");
                     console.log(res.errors);
                 }
                 formdata.append('resdict', JSON.stringify(res.legacyid_to_entityid));
-                load_id = res.load_id;
+                $('#check-status-button').attr('disabled', true);
                 if ($('#folder-upload-div').is(":visible")) {
                     $('#full-load-mask').hide();
                     $('#import-msg').css("color", "green");
@@ -371,7 +392,7 @@ you will be able to see your load recorded once it is finished.")
             type: 'post',
             datatype: 'json',
             data: {
-                'load_id': load_id
+                'load_id': loadId
             },
             success: function(result) {
                 if (!result.success) {

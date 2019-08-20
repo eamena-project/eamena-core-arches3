@@ -30,6 +30,7 @@ from django.shortcuts import render_to_response
 from django.http import HttpResponse
 from arches.app.models.resource import Resource
 from arches.app.utils.imageutils import generate_thumbnail
+from arches.app.utils.eamena_utils import make_load_id
 
 def handle_uploaded_file(f):
     '''the actual file upload happens here, and returns a path to the file
@@ -76,6 +77,23 @@ def main(request):
         'load_log':loads}, # not sure if this is necessary
         context_instance=RequestContext(request) # or this
     )
+
+def check_status(request):
+    '''this view takes the input load id and checks to see if it's been written yet
+    in the bulk load log.
+    '''
+
+    load_id = request.POST.get('load_id', '')
+
+    finished = False
+    loadlog = settings.BULK_UPLOAD_LOG_FILE
+    if os.path.isfile(loadlog):
+        with open(loadlog,'rb') as loadlog:
+            for line in loadlog.readlines():
+                if load_id in line:
+                    finished = True
+
+    return HttpResponse(json.dumps({"finished": finished}), content_type="application/json")
 
 def validate(request):
     '''this view is designed to be hit with an ajax call that includes the path
@@ -130,6 +148,10 @@ def validate(request):
                 resource_ids.append(row[0])
         resource_count = len(set(resource_ids))
         result['resource_count'] = resource_count
+
+        # set load_id here so it can be passed, in turn, to the load command
+        result['load_id'] = make_load_id()
+
     return HttpResponse(json.dumps(result), content_type="application/json")
     
 def upload_spreadsheet(request):
@@ -160,6 +182,7 @@ def import_archesfile(request):
     results are written to a log file.'''
 
     fpath = request.POST.get('filepath','')
+    load_id = request.POST.get('load_id','')
     fullpath = os.path.join(settings.BULK_UPLOAD_DIR,fpath)
 
     convert = {'false':False,'true':True}
@@ -182,6 +205,7 @@ def import_archesfile(request):
                          operation='load_resources',
                          source=fullpath,
                          appending=append,
+                         load_id=load_id,
                          run_internal=True,
                          stdout=output,
                          )

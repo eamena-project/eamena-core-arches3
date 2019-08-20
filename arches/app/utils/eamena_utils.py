@@ -84,4 +84,11 @@ def return_one_node(nodename, destination):
 #             ResourceList = sorted(ResourceList, key = lambda row:(row[0],row[4],row[2]), reverse = False)
             writer.writerow(['RESOURCEID',nodename])
             for row in ResourceList:
-                writer.writerow(row)          
+                writer.writerow(row)
+
+def make_load_id():
+
+    d = datetime.datetime.now()
+    load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
+                d.hour, d.minute, d.microsecond)
+    return load_id
