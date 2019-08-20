@@ -337,11 +337,10 @@ $( document ).ready(function() {
                 }
                 formdata.append('resdict', JSON.stringify(res.legacyid_to_entityid));
                 $('#check-status-button').attr('disabled', true);
-                if ($('#folder-upload-div').is(":visible")) {
-                    $('#full-load-mask').hide();
-                    $('#import-msg').css("color", "green");
-                    $('#import-msg').text("Resources imported");
-                }else {
+                $('#full-load-mask').hide();
+                $('#import-msg').css("color", "green");
+                $('#import-msg').text("Resources imported");
+                if (!$('#folder-upload-div').is(":visible")) {
                     window.location.href = $("#bulk-url").attr("data-url");
                 }
             }
