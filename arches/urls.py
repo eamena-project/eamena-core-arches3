@@ -68,8 +68,6 @@ urlpatterns = patterns('',
     url(r'^admin/auth/group/(?P<groupid>[0-9]*)/group_activity/$' , 'arches.app.views.group_activity.group_activity', name='group_activity'),
     url(r'^admin/auth/user/(?P<userid>[0-9]*)/user_activity_data/$' , 'arches.app.views.user_activity.user_activity_data', name='user_activity_data'),
     url(r'^admin/auth/group/(?P<groupid>[0-9]*)/group_activity_data/$' , 'arches.app.views.group_activity.group_activity_data', name='group_activity_data'),
-    
-   
 
     # Uncomment the admin/doc line below to enable admin documentation:
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
@@ -77,11 +75,14 @@ urlpatterns = patterns('',
     url(r'^i18n/', include('django.conf.urls.i18n')), 
     # Uncomment the next line to enable the admin:
     url(r'^admin/', include(admin.site.urls)),
-    
-    # these two urls enable the Herbridge endpoint
-    url(r'^api/herbridge/get$' , 'arches.app.views.api.return_resources', name='herbridge_get'),   
-    url(r'^api/herbridge/put$' , 'arches.app.views.api.create_resources', name='herbridge_put'),
 )
+
+if settings.ENABLE_HERBRIDGE_ENDPOINTS is True:
+    urlpatterns += (
+        # these two urls are used by HerBridge to connect to this app
+        url(r'^api/herbridge/get$' , 'arches.app.views.api.return_resources', name='herbridge_get'),
+        url(r'^api/herbridge/put$' , 'arches.app.views.api.create_resources', name='herbridge_put'),
+    )
 
 urlpatterns += staticfiles_urlpatterns()
 

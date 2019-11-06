@@ -84,6 +84,8 @@ ETL_USERNAME = 'ETL' # override this setting in your packages settings.py file
 
 LIVERELOAD_PORT = 35729 # usually only used in development, 35729 is default for livereload browser extensions
 
+ENABLE_HERBRIDGE_ENDPOINTS = False
+
 DEFAULT_MAP_X = 0
 DEFAULT_MAP_Y = 0
 DEFAULT_MAP_ZOOM = 0
