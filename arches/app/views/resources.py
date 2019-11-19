@@ -41,7 +41,7 @@ def report(request, resourceid):
     raise NotImplementedError('Reports are not yet implemented.')
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='edit').count() != 0, login_url='/auth/')
+@user_passes_test(lambda u: u.groups.filter(name='editplus').count() != 0, login_url='/auth/')
 @csrf_exempt
 def resource_manager(request, resourcetypeid='', form_id='default', resourceid=''):
 
