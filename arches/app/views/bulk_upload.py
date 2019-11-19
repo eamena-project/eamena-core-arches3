@@ -51,7 +51,7 @@ def get_archesfile_path(filepath):
     return destpath
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='edit').count() != 0, login_url='/auth/')
+@user_passes_test(lambda u: u.groups.filter(name='editplus').count() != 0, login_url='/auth/')
 def new_upload(request):
     ''' nothing special here, everything is handled with ajax'''
 

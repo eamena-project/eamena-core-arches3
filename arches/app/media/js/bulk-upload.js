@@ -298,13 +298,6 @@ $( document ).ready(function() {
     $('#load-data-button').click( function () {
         $('#import-msg').css("color","orange");
         $('#import-msg').text("Importing data... this may take a while.");
-        if (resCt > 50) {
-            window.alert("With a high resource count (> 50) \
-this operation may time out, but, your resources will \
-still load. You'll now be redirected to the bulk upload home page where\
-you will be able to see your load recorded once it is finished.")
-            window.location.href = $("#bulk-url").attr("data-url");
-        }
         $('#validate-load-mask').show();
         $.ajax({
             beforeSend: function(request) {
