@@ -142,6 +142,8 @@ def return_resources(request):
         query.add_query(boolfilter)
         results = query.search(index='entity', doc_type='',start=0, limit = 1000)
         for hit in results['hits']['hits']:
+            if hit['_type'] == "INFORMATION_RESOURCE.E73":
+                continue
             json_res = {
                 'resource_type': '',
                 'resource_id': '',
