@@ -33,9 +33,6 @@ from arches.app.utils.imageutils import generate_thumbnail
 from arches.app.models.resource import Resource
 from arches.app.models.entity import Entity
 
-
-import numpy as np
-
 def create_information_resource(data):
 
     resid = data['id']
@@ -159,24 +156,14 @@ def return_resources(request):
     return JSONResponse(json_collection)
         
 def generate_centroids(geometries):
-    '''In some cases, resources will have multiple geometries. If that is the case, generating one centroid from the first available geometry won't be an accurate representation of the location of the overall resource. In that case, centre points are first generated for each geometry, then the centroid of the centre points is outputted. '''
+    '''Return the centroid of the geometry. If there are multiple geometries, then
+    only return the centroid of the first one (this is not ideal but sufficient).'''
 
     geom_list = []
     if geometries:
-        if len(geometries) == 1:
-            geom = GEOSGeometry(JSONSerializer().serialize(geometries[0]['value']),srid =4326)
-            return JSONDeserializer().deserialize(geom.centroid.json)
-        else:            
-            for geometry in geometries:
-                geom = GEOSGeometry(JSONSerializer().serialize(geometry['value']),srid =4326)
-                centroid = JSONDeserializer().deserialize(geom.centroid.json)
-                geom_list.append(centroid['coordinates'])
-            arr = np.asarray(geom_list)
-            length = arr.shape[0]
-            sum_x = np.sum(arr[:, 0])
-            sum_y = np.sum(arr[:, 1])
-            wkt = 'POINT(%s, %s)' % (sum_x/length, sum_y/length)
-            return GEOSGeometry(wkt, srid = 4326).json
-            
+
+        geom = GEOSGeometry(JSONSerializer().serialize(geometries[0]['value']),srid =4326)
+        return JSONDeserializer().deserialize(geom.centroid.json)
+
     else:
         return None        
