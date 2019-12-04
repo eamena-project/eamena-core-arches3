@@ -24,6 +24,9 @@ from formats.archesjson import JsonReader
 from formats.shpfile import ShapeReader
 from django.core.exceptions import ObjectDoesNotExist
 
+import logging
+logger = logging.getLogger(__name__)
+
 # def resource_list_chunk_to_entities_wrapper(args):
     # return ResourceLoader.resource_list_chunk_to_entities(*args)
 
@@ -170,13 +173,17 @@ class ResourceLoader(object):
                         try:
                             master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
                         except Exception as e:
-                            print 'Could not save resource {}.\nERROR: {}'.format(master_graph.entityid,e)
+                            logger.warn( 'Could not save resource {}.\nERROR: {}'.format(entityid,e))
+                            print 'Could not save resource {}.\nERROR: {}'.format(entityid,e)
                         resource.entityid = master_graph.entityid
                         #new_resource = Resource().get(resource.entityid)
                         #assert new_resource == master_graph
                         try:
                             master_graph.index()
+                            full_resource = Resource().get(resource.entityid)
+                            full_resource.index()
                         except Exception as e:
+                            logger.warn('Could not index resource {}.\nERROR: {}'.format(resource.entityid,e))
                             print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
                         legacyid_to_entityid[resource.resource_id] = master_graph.entityid
                     else:
