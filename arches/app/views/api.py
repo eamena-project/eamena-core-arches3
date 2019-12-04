@@ -33,6 +33,9 @@ from arches.app.utils.imageutils import generate_thumbnail
 from arches.app.models.resource import Resource
 from arches.app.models.entity import Entity
 
+import logging
+logger = logging.getLogger(__name__)
+
 def create_information_resource(data):
 
     resid = data['id']
@@ -97,11 +100,17 @@ def create_information_resource(data):
 
 @csrf_exempt
 def create_resources(request):
+    logger.warn("in create resources")
+    logger.warn(request.method)
+    received_json = JSONDeserializer().deserialize(request.body)
+    logger.warn(received_json)
 
     if request.method == 'POST':
+        logger.warn("creating resources")
+        
 
         received_json = JSONDeserializer().deserialize(request.body)
-
+        logger.warn("received_json")
         ## check that the received JSON has all of the expected keys
         all_keys = ['url', 'related_to', 'longitude',
             'caption', 'latitude', 'captureDate', 'id']
