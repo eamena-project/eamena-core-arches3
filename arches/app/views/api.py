@@ -86,7 +86,7 @@ def create_information_resource(data):
 
     ## this is the uuid of the concept value for the only type of relationship
     ## allowed between a HR and an Information resource
-    relationship_type = '4f495e34-987a-44bb-ad24-183310f38d82'
+    relationship_type = settings.HERBRIDGE_CREATED_RES_RELATIONSHIP_ID
     for related_res in data['related_to']:
         relationship = res.create_resource_relationship(related_res, relationship_type_id=relationship_type)
         se.index_data(index='resource_relations', doc_type='all', body=model_to_dict(relationship), idfield='resourcexid')
