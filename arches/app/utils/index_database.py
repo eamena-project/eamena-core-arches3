@@ -76,19 +76,26 @@ def index_resources_by_type(resource_types, result_summary):
         print "Indexing {0} {1} resources".format(len(resources), resource_type[0])
         result_summary[resource_type[0]] = {'database':len(resources), 'indexed':0}
 
-        for resource in resources:
+        for n, resource in enumerate(resources, start=1):
+            if n % 100 == 0:
+                print n,
             try:
                 resource = Resource().get(resource.entityid)
                 resource.index()
             except Exception as e:
                 msg = 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
-                print msg
+                print "\n"+msg
                 errors.append(e)
 
         se = SearchEngineFactory().create()
         related_resource_records = archesmodels.RelatedResource.objects.all()
         for related_resource_record in related_resource_records:
-            se.index_data(index='resource_relations', doc_type='all', body=model_to_dict(related_resource_record), idfield='resourcexid')
+            try:
+                se.index_data(index='resource_relations', doc_type='all', body=model_to_dict(related_resource_record), idfield='resourcexid')
+            except Exception as e:
+                msg = 'Could not index related resource {}.\nERROR: {}'.format(related_resource_record.__dict__,e)
+                print "\n"+msg
+                errors.append(e)
 
     if len(errors) > 0:
         print "Number of errors:", len(errors)

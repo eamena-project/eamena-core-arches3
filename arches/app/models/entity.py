@@ -260,8 +260,8 @@ class Entity(object):
                 # this is some extra rough logic that was implemented during the v1-v2
                 # migration effort. During json load, file data was just stored as paths
                 # to the S3 bucket. To handle this, we download the file locally, open it,
-                # set it as a Django File object and then set the entity's values to it and save.
-                elif (isinstance(themodelinstance, archesmodels.Files)):
+                # set it as a Django File object and then set the entity's values to it and save. Commented out for al ula production db.
+                '''elif (isinstance(themodelinstance, archesmodels.Files)):
                     tempfile_name = self.value.split("/")[-1]
                     urllib.urlretrieve(self.value, tempfile_name)
 
@@ -271,7 +271,7 @@ class Entity(object):
                     self.value = themodelinstance.geturl()
                     self.label = themodelinstance.getname()
 
-                    os.remove(tempfile_name)
+                    os.remove(tempfile_name)'''
 
 
         for child_entity in self.child_entities:

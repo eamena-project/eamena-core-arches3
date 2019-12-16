@@ -62,13 +62,25 @@ class Command(BaseCommand):
         for top_relation in dropdown_relations:
 
             collection_concept = Concept().get(id=top_relation.conceptidto_id)
-            dd_name = collection_concept.values[0].value
+            if len(collection_concept.values) == 0:
+                continue
+
+            #print [i.__dict__ for i in collection_concept.values]
+            dd_name = False
+            for v in collection_concept.values:
+                if v.type == "prefLabel" and "en" in v.language:
+                    dd_name == v.value
+            if dd_name is False:
+                dd_name = collection_concept.values[0].value
 
             relations = collect_relations(top_relation,output=[])
             full_contents[dd_name] = relations
 
         for k in sorted(full_contents):
-            print "{}: {} members".format(k, len(full_contents[k]))
+            try:
+                print "{}: {} members".format(k, len(full_contents[k]))
+            except:
+                print "<encoding error in print>: {} members".format(len(full_contents[k]))
         print len(full_contents), "collections"
         with open(filepath,"wb") as out:
             json.dump(full_contents,out,indent=1)
