@@ -25,6 +25,9 @@ from formats.shpfile import ShapeReader
 from django.core.exceptions import ObjectDoesNotExist
 from arches.app.utils.eamena_utils import make_load_id
 
+import logging
+logger = logging.getLogger(__name__)
+
 # def resource_list_chunk_to_entities_wrapper(args):
     # return ResourceLoader.resource_list_chunk_to_entities(*args)
 
@@ -48,13 +51,7 @@ class ResourceLoader(object):
             help='format extension that you would like to load: arches or shp'),
         )
 
-    def load(self, source, appending = False, load_id=None):
-        d = datetime.datetime.now()
-
-        if load_id is None:
-            load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
-                d.hour, d.minute, d.microsecond)
-
+    def load(self, source, appending = False):
         file_name, file_format = os.path.splitext(source)
         archesjson = False
         if file_format == '.shp':
@@ -72,13 +69,17 @@ class ResourceLoader(object):
             archesjson = True
             reader = JsonReader()
             print '\nNO VALIDATION USED ON JSONL FILE ({0})'.format(source)
+            d = datetime.datetime.now()
+            load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
+                d.hour, d.minute, d.microsecond)
             loaded_ct = 0
             with open(source, "rb") as openf:
                 lines = openf.readlines()
                 for line in lines:
                     resource = json.loads(line)
-                    result = self.resource_list_to_entities([resource], load_id, True, False,
-                        filename=os.path.basename(source))
+                    result = self.resource_list_to_entities([resource], True, False,
+                        filename=os.path.basename(source), load_id=load_id
+                    )
                     loaded_ct += 1
             return {"count":loaded_ct}
 
@@ -91,8 +92,9 @@ class ResourceLoader(object):
         relationships_file = file_name + '.relations'
         elapsed = (time() - start)
         print 'time to parse {0} resources = {1}'.format(file_name, elapsed)
-        results = self.resource_list_to_entities(resources, load_id, archesjson, appending,
-            filename=os.path.basename(source))
+        results = self.resource_list_to_entities(resources, archesjson, appending,
+            filename=os.path.basename(source)
+        )     
         if os.path.exists(relationships_file):
             with open(relationships_file, "rb") as openf:
                 lines = openf.readlines()
@@ -116,10 +118,15 @@ class ResourceLoader(object):
         
 
 
-    def resource_list_to_entities(self, resource_list, load_id, archesjson=False, append=False, filename=''):
+    def resource_list_to_entities(self, resource_list, archesjson=False, append=False, filename='',
+                                  load_id=None):
         '''Takes a collection of imported resource records and saves them as arches entities'''
         start = time()
         d = datetime.datetime.now()
+
+        if load_id is None:
+            load_id = 'LOADID:{0}-{1}-{2}-{3}-{4}-{5}'.format(d.year, d.month, d.day,
+                d.hour, d.minute, d.microsecond) #Should we append the timestamp to the exported filename?
 
         ret = {'successfully_saved':0, 'failed_to_save':[], 'load_id': load_id}
         schema = None
@@ -167,13 +174,17 @@ class ResourceLoader(object):
                         try:
                             master_graph.save(user=self.user, note=load_id, resource_uuid=entityid)
                         except Exception as e:
-                            print 'Could not save resource {}.\nERROR: {}'.format(master_graph.entityid,e)
+                            logger.warn( 'Could not save resource {}.\nERROR: {}'.format(entityid,e))
+                            print 'Could not save resource {}.\nERROR: {}'.format(entityid,e)
                         resource.entityid = master_graph.entityid
                         #new_resource = Resource().get(resource.entityid)
                         #assert new_resource == master_graph
                         try:
                             master_graph.index()
+                            full_resource = Resource().get(resource.entityid)
+                            full_resource.index()
                         except Exception as e:
+                            logger.warn('Could not index resource {}.\nERROR: {}'.format(resource.entityid,e))
                             print 'Could not index resource {}.\nERROR: {}'.format(resource.entityid,e)
                         legacyid_to_entityid[resource.resource_id] = master_graph.entityid
                     else:
