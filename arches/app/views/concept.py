@@ -62,7 +62,7 @@ def rdm(request, conceptid):
 
 
 @login_required
-@user_passes_test(lambda u: u.groups.filter(name='edit').count() != 0, login_url='/auth/')
+@user_passes_test(lambda u: u.groups.filter(name='editplus').count() != 0, login_url='/auth/')
 @csrf_exempt
 def concept(request, conceptid):
     f = request.GET.get('f', 'json')

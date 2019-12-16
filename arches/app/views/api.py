@@ -102,8 +102,16 @@ def create_information_resource(data):
 def create_resources(request):
     logger.warn("in create resources")
     logger.warn(request.method)
-    received_json = JSONDeserializer().deserialize(request.body)
-    logger.warn(received_json)
+    logger.warn(request.body)
+    logger.warn(len(request.body))
+    logger.warn(type(request.body))
+
+    try:
+        received_json = JSONDeserializer().deserialize(request.body)
+        logger.warn("success:")
+        logger.warn(received_json)
+    except Exception as e:
+        logger.warn(e)
 
     if request.method == 'POST':
         logger.warn("creating resources")
