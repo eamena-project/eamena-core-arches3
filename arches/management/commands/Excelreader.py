@@ -654,7 +654,61 @@ class Command(BaseCommand):
                 writer = csv.writer(archesfile, delimiter ="|")
                 writer.writerow(['RESOURCEID', 'RESOURCETYPE', 'ATTRIBUTENAME', 'ATTRIBUTEVALUE', 'GROUPID'])
                 ResourceList = sorted(ResourceList, key = lambda row:(row[0],row[4],row[2]), reverse = False)
-                for row in ResourceList:
+                # this code added to rearrange the featuregroups as a bandaid fix for featuregroups not displaying correctly in the edit forms.
+                def reaarange_feature_group(group):
+                    FFTRow = ''
+                    FFTCRow = ''
+                    FSTRow = ''
+                    for i in group:
+                        if 'FEATURE_FORM_TYPE.I4' in i:
+                            FFTRow = group[group.index(i)]
+                        if 'FEATURE_SHAPE_TYPE.E55' in i:
+                            FSTRow = group[group.index(i)]
+                        if 'FEATURE_FORM_TYPE_CERTAINTY.I6' in i:
+                            FFTCRow = group[group.index(i)]
+                    if FFTRow != '' and FSTRow != '' and FFTCRow != '':
+                        group.remove(FFTRow)
+                        group.remove(FSTRow)
+                        group.remove(FFTCRow)
+                        group.append(FFTRow)
+                        group.append(FSTRow)
+                        group.append(FFTCRow)
+                    elif FFTRow != '' and FFTCRow != '' and FSTRow == '':
+                        group.remove(FFTRow)
+                        group.remove(FFTCRow)
+                        FSTRow = [group[0][0], group[0][1], 'FEATURE_SHAPE_TYPE.E55', 'FEATURE_EVIDENCE_SHAPE_TYPE:1', group[0][4]]
+                        group.append(FFTRow)
+                        group.append(FSTRow)
+                        group.append(FFTCRow)
+                    elif FFTRow != '' and FSTRow != '' and FFTCRow == '':
+                        group.remove(FFTRow)
+                        group.remove(FSTRow)
+                        group.append(FFTRow)
+                        group.append(FSTRow)
+                    elif FFTCRow != '' and FSTRow != '' and FFTRow == '':
+                        group.remove(FSTRow)
+                        group.remove(FFTCRow)
+                        group.append(FFTCRow)
+                        group.append(FSTRow)
+                    else:
+                        print 'This error is from ~ln 694 of commands/management/Excelreader.py'
+                    return group
+                from operator import itemgetter
+                from itertools import groupby
+                newResourceList = []
+                feature_group_attributes = 'FEATURE_ARRANGEMENT_TYPE.E55','FEATURE_ASSIGNMENT_INVESTIGATOR_NAME.E41','FEATURE_FORM_TYPE.I4', 'FEATURE_FORM_TYPE_CERTAINTY.I6', 'FEATURE_NUMBER_TYPE.E55','FEATURE_SHAPE_TYPE.E55'
+                for a, b in groupby(ResourceList, itemgetter(0)):
+                    for c, d in groupby(b, itemgetter(4)):
+                        group = list(d)
+                        feature_group = False
+                        for row in group:
+                            if any(item in feature_group_attributes for item in row) == True:
+                                feature_group = True
+                        if feature_group == True:
+                            group = reaarange_feature_group(group)
+                        for r in group:
+                            newResourceList.append(r)
+                for row in newResourceList:
                     writer.writerow(row)
 
             arches_errors = ArchesReader().validate_file(destination,break_on_error=False)
