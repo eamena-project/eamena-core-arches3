@@ -77,6 +77,13 @@ urlpatterns = patterns('',
     url(r'^admin/', include(admin.site.urls)),
 )
 
+if settings.ENABLE_HERBRIDGE_ENDPOINTS is True:
+    urlpatterns += (
+        # these two urls are used by HerBridge to connect to this app
+        url(r'^api/herbridge/get$' , 'arches.app.views.api.return_resources', name='herbridge_get'),
+        url(r'^api/herbridge/put$' , 'arches.app.views.api.create_resources', name='herbridge_put'),
+    )
+
 urlpatterns += staticfiles_urlpatterns()
 
 if settings.DEBUG:
